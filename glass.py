@@ -125,7 +125,7 @@ with tab2:
                 "Notes / Extra details (optional)",
                 placeholder="E.g. scratch happened during unloading…",
                 key=form_keys["note"]
-)
+                                    )
 
 
         up_img = st.file_uploader("📸 Upload Scratch Image (optional)",

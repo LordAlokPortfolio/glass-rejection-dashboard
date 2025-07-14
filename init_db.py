@@ -1,12 +1,4 @@
-import sqlite3
-
-# Set your target path
-conn = sqlite3.connect(r"C:\Users\akulkarni\Glass Rejection Dashboard\glass_defects.db")
-cursor = conn.cursor()
-
-# Create table with correct structure (includes Size column)
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS defects (
+CREATE TABLE defects (
     PO TEXT,
     Tag TEXT,
     Size TEXT,
@@ -16,11 +8,6 @@ CREATE TABLE IF NOT EXISTS defects (
     Glass_Type TEXT,
     Rack_Type TEXT,
     Vendor TEXT,
-    Date TEXT
-)
-""")
-
-conn.commit()
-conn.close()
-
-print("✅ glass_defects.db created with correct table structure.")
+    Date TEXT,
+    Note TEXT
+);
