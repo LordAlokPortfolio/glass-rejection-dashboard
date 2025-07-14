@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS defects (
     Scratch_Type TEXT,
     Glass_Type TEXT,
     Rack_Type TEXT,
+    Vendor TEXT,
     Date TEXT
 )
 """)
