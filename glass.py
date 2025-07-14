@@ -9,7 +9,7 @@ from streamlit_autorefresh import st_autorefresh
 if not os.path.exists("glass_defects.db"):
     import init_db  # Runs the init script if DB doesn't exist
 
-st.set_page_config(page_title="Glass Rejection Dashboard", layout="wide")
+st.set_page_config(page_title="Glass Guard", layout="wide")
 st_autorefresh(interval=300_000, key="auto_refresh")          # 5-min refresh
 
 # ── Logo ────────────────────────────────────────────────────
@@ -37,7 +37,8 @@ tab1, tab2, tab3 = st.tabs(["📊 Dashboard", "📝 Data Entry", "📄 Data Tabl
 
 # ╭────────────────────────── TAB 1 – Dashboard ────────────╮
 with tab1:
-    st.title("📊 Glass Scratch Summary Dashboard")
+    st.title("📊 GlassGuard – Glass Scratch Summary Dashboard")
+    st.caption("Track. Analyze. Improve.")
     if df.empty:
         st.warning("⚠️ No data yet – add a record in “📝 Data Entry”.")
     else:
