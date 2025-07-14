@@ -6,6 +6,9 @@ from datetime import datetime, date
 from PIL import Image
 from streamlit_autorefresh import st_autorefresh
 
+if not os.path.exists("glass_defects.db"):
+    import init_db  # Runs the init script if DB doesn't exist
+
 st.set_page_config(page_title="Glass Rejection Dashboard", layout="wide")
 st_autorefresh(interval=300_000, key="auto_refresh")          # 5-min refresh
 
