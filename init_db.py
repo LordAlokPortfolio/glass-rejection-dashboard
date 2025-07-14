@@ -1,18 +1,13 @@
 import sqlite3
+import pandas as pd
 import os
 
-# Set DB path
-DB_PATH = r"C:\Users\akulkarni\Glass Rejection Dashboard\glass_defects.db"
+DB_PATH = "glass_defects.db"
+CSV_PATH = "defects_data.csv"
 
-# Optional: ensure images folder exists
-IMG_DIR = r"C:\Users\akulkarni\Glass Rejection Dashboard\images"
-os.makedirs(IMG_DIR, exist_ok=True)
-
-# Connect to database
 conn = sqlite3.connect(DB_PATH)
 cursor = conn.cursor()
 
-# Create table with all updated fields including Vendor
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS defects (
     PO TEXT,
@@ -28,7 +23,13 @@ CREATE TABLE IF NOT EXISTS defects (
 )
 """)
 
+df = pd.read_sql_query("SELECT * FROM defects", conn)
+if df.empty and os.path.exists(CSV_PATH):
+    csv_df = pd.read_csv(CSV_PATH)
+    csv_df.to_sql("defects", conn, if_exists="append", index=False)
+    print("✅ Clean CSV data loaded.")
+else:
+    print("✅ Database already populated.")
+
 conn.commit()
 conn.close()
-
-print("✅ glass_defects.db created with all required columns including Vendor.")
