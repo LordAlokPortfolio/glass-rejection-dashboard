@@ -1,36 +1,43 @@
 import sqlite3
 
-# Connect to the database
 conn = sqlite3.connect("glass_defects.db")
 cursor = conn.cursor()
 
-# 🟡 Set your target Tag# here
-tag_to_delete = "160744"  # Replace with the Tag# you want to delete
-rowid_to_delete = None    # Optional: set to a specific rowid if you only want to delete one row
+# 🔹 Ask user what they want to delete
+mode = input("Delete by (1) Tag# or (2) rowid? Enter 1 or 2: ").strip()
 
-# 🔎 Show matches
-if rowid_to_delete:
-    cursor.execute("SELECT rowid, * FROM defects WHERE Tag = ? AND rowid = ?", (tag_to_delete, rowid_to_delete))
+if mode == "1":
+    tag_input = input("Enter Tag# to delete: ").strip()
+    cursor.execute("SELECT rowid, * FROM defects WHERE Tag = ?", (tag_input,))
+elif mode == "2":
+    rowid_input = input("Enter rowid to delete: ").strip()
+    cursor.execute("SELECT rowid, * FROM defects WHERE rowid = ?", (rowid_input,))
 else:
-    cursor.execute("SELECT rowid, * FROM defects WHERE Tag = ?", (tag_to_delete,))
+    print("❌ Invalid choice. Exiting.")
+    conn.close()
+    exit()
+
 rows = cursor.fetchall()
 
 if not rows:
-    print("⚠️ No matching rows found.")
-else:
-    print("🔎 Matching rows:")
-    for r in rows:
-        print(r)
+    print("⚠️ No matching records found.")
+    conn.close()
+    exit()
 
-    confirm = input(f"\n🗑 Delete {'rowid '+str(rowid_to_delete) if rowid_to_delete else 'ALL'} with Tag# {tag_to_delete}? (y/n): ").strip().lower()
-    if confirm == "y":
-        if rowid_to_delete:
-            cursor.execute("DELETE FROM defects WHERE Tag = ? AND rowid = ?", (tag_to_delete, rowid_to_delete))
-        else:
-            cursor.execute("DELETE FROM defects WHERE Tag = ?", (tag_to_delete,))
-        conn.commit()
-        print("✅ Deleted successfully.")
+# 🔍 Show matches
+print("\n🔎 Matching records:")
+for row in rows:
+    print(row)
+
+confirm = input("\n🗑 Are you sure you want to delete these rows? (y/n): ").strip().lower()
+if confirm == "y":
+    if mode == "1":
+        cursor.execute("DELETE FROM defects WHERE Tag = ?", (tag_input,))
     else:
-        print("❌ Cancelled.")
+        cursor.execute("DELETE FROM defects WHERE rowid = ?", (rowid_input,))
+    conn.commit()
+    print("✅ Deleted successfully.")
+else:
+    print("❌ Cancelled.")
 
 conn.close()
