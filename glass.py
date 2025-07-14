@@ -213,3 +213,21 @@ if st.button("Generate Table", key="gen_today"):
                 """,
                 height=50
             )
+            # ▸ export current table to Excel
+import io
+from datetime import datetime
+
+if not df.empty:
+    excel_buf = io.BytesIO()
+    df.to_excel(excel_buf, index=False)
+    excel_buf.seek(0)
+
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    st.download_button(
+        label="⬇️ Download full backup (Excel)",
+        data=excel_buf,
+        file_name=f"glass_defects_backup_{ts}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        use_container_width=True
+    )
+
