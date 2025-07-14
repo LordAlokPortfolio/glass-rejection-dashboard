@@ -109,7 +109,7 @@ with tab2:
             stype = st.selectbox("Type of Scratch",
                                  ["Surface Scratch","Deep Scratch","Drag Mark","Swirl Mark",
                                   "Spot Scratch","Edge Scratch","Center Scratch","Suction Cup Mark",
-                                  "Handling Damage","Rack Damage","Machine Scratch","Unknown"],
+                                  "Handling Damage","Rack Damage","Machine Scratch","Stain Mark","Unknown"],
                                  key=form_keys["stype"])
 
             gtype = st.selectbox("Glass Type (Coating)",

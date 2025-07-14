@@ -1,0 +1,14 @@
+# ⛔ Don't upload database or images
+glass_defects.db
+images/
+
+# ⛔ Ignore Streamlit cache
+.streamlit/
+__pycache__/
+*.pyc
+
+# ⛔ Ignore OS & IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.env
