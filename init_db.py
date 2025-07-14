@@ -1,4 +1,10 @@
-CREATE TABLE defects (
+import sqlite3
+
+conn = sqlite3.connect("glass_defects.db")
+cursor = conn.cursor()
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS defects (
     PO TEXT,
     Tag TEXT,
     Size TEXT,
@@ -10,4 +16,8 @@ CREATE TABLE defects (
     Vendor TEXT,
     Date TEXT,
     Note TEXT
-);
+)
+""")
+
+conn.commit()
+conn.close()
