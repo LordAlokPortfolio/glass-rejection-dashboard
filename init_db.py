@@ -1,13 +1,10 @@
 import sqlite3
-import pandas as pd
-import os
 
-DB_PATH = "glass_defects.db"
-CSV_PATH = "defects_data.csv"
-
-conn = sqlite3.connect(DB_PATH)
+# Set your target path
+conn = sqlite3.connect(r"C:\Users\akulkarni\Glass Rejection Dashboard\glass_defects.db")
 cursor = conn.cursor()
 
+# Create table with correct structure (includes Size column)
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS defects (
     PO TEXT,
@@ -18,18 +15,11 @@ CREATE TABLE IF NOT EXISTS defects (
     Scratch_Type TEXT,
     Glass_Type TEXT,
     Rack_Type TEXT,
-    Vendor TEXT,
     Date TEXT
 )
 """)
 
-df = pd.read_sql_query("SELECT * FROM defects", conn)
-if df.empty and os.path.exists(CSV_PATH):
-    csv_df = pd.read_csv(CSV_PATH)
-    csv_df.to_sql("defects", conn, if_exists="append", index=False)
-    print("✅ Clean CSV data loaded.")
-else:
-    print("✅ Database already populated.")
-
 conn.commit()
 conn.close()
+
+print("✅ glass_defects.db created with correct table structure.")
