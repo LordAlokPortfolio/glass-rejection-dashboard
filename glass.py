@@ -120,9 +120,13 @@ with tab2:
                                  key=form_keys["rtype"])
             vendor = st.selectbox("Vendor", ["Cardinal CG", "Woodbridge", "Universal", "Trimlite"], key=form_keys["vendor"])
 
-        note = ""
-        if stype == "Other":
-            note = st.text_area("Enter a note to describe the issue", key=form_keys["note"])
+            # ── Notes ────────────────────────────────────────────────
+            note = st.text_area(
+                "Notes / Extra details (optional)",
+                placeholder="E.g. scratch happened during unloading…",
+                key=form_keys["note"]
+)
+
 
         up_img = st.file_uploader("📸 Upload Scratch Image (optional)",
                                   type=["jpg","jpeg","png"], key=form_keys["img"])
