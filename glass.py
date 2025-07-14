@@ -78,7 +78,6 @@ with tab1:
             use_container_width=True)
 
 # ╭────────────────────────── TAB 2 – Data Entry ───────────╮
-# ╭────────────────────────── TAB 2 – Data Entry ───────────╮
 with tab2:
     st.title("📝 Enter New Scratch Record")
 
@@ -164,42 +163,7 @@ with tab2:
             st.success("✅ Submitted!")
             st.rerun()
 
-    # ---- handle SUBMIT (outside the form block) --------------------------
-    if submit_btn:
-        if not (po and tag):
-            st.error("PO# and Tag# are required.")
-        else:
-            chosen_date = date_val.strftime("%Y-%m-%d")
-
-            cursor.execute("""
-            INSERT INTO defects
-            (PO, Tag, Size, Quantity, Scratch_Location, Scratch_Type,
-            Glass_Type, Rack_Type, Vendor, Date)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (po.strip(), tag.strip(), size.strip(), qty, loc, stype,
-            gtype, rtype, vendor, chosen_date))
-
-            conn.commit()
-
-        if up_img:
-            safe_tag = tag.strip().replace(" ", "_")
-            date_str = chosen_date
-            ext = up_img.name.split('.')[-1].lower()
-            fname = f"{safe_tag}_{date_str}.{ext}"
-            fpath = os.path.join(IMG_DIR, fname)
-
-            counter = 1
-            while os.path.exists(fpath):
-                fname = f"{safe_tag}_{date_str}_{counter}.{ext}"
-            fpath = os.path.join(IMG_DIR, fname)
-            counter += 1
-
-            Image.open(up_img).save(fpath)
-
-
-            st.success("✅ Submitted!")
-            st.rerun()
-
+    
     
 # ╭────────────────────────── TAB 3 – Data Table ────────────╮
 with tab3:
