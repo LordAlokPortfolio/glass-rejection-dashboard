@@ -78,24 +78,23 @@ with tab1:
             use_container_width=True)
 
 # ╭────────────────────────── TAB 2 – Data Entry ───────────╮
+# ╭────────────────────────── TAB 2 – Data Entry ───────────╮
 with tab2:
     st.title("📝 Enter New Scratch Record")
 
     form_keys = {
         "size": "size", "po": "po", "tag": "tag", "qty": "qty",
         "dval": "dval", "loc": "loc", "stype": "stype",
-        "gtype": "gtype", "rtype": "rtype", "img": "img", "vendor": "vendor"
-
+        "gtype": "gtype", "rtype": "rtype", "img": "img", "vendor": "vendor", "note": "note"
     }
 
-    # ---- the input form --------------------------------------------------
     with st.form("scratch_form", clear_on_submit=False):
         c1, c2 = st.columns(2)
 
         with c1:
             size = st.text_input("Glass Size", key=form_keys["size"])
-            po   = st.text_input("PO#",        key=form_keys["po"])
-            tag  = st.text_input("Tag#",       key=form_keys["tag"])
+            po   = st.text_input("PO# (optional)", key=form_keys["po"])
+            tag  = st.text_input("Tag#", key=form_keys["tag"])
             qty  = st.number_input("Quantity", min_value=1, value=1, key=form_keys["qty"])
             date_val = st.date_input("Date", value=date.today(), key=form_keys["dval"])
 
@@ -109,7 +108,7 @@ with tab2:
             stype = st.selectbox("Type of Scratch",
                                  ["Surface Scratch","Deep Scratch","Drag Mark","Swirl Mark",
                                   "Spot Scratch","Edge Scratch","Center Scratch","Suction Cup Mark",
-                                  "Handling Damage","Rack Damage","Machine Scratch","Stain Mark","Unknown"],
+                                  "Handling Damage","Rack Damage","Machine Scratch","Stain Mark","Unknown","Other"],
                                  key=form_keys["stype"])
 
             gtype = st.selectbox("Glass Type (Coating)",
@@ -122,11 +121,48 @@ with tab2:
                                  key=form_keys["rtype"])
             vendor = st.selectbox("Vendor", ["Cardinal CG", "Woodbridge", "Universal", "Trimlite"], key=form_keys["vendor"])
 
+        note = ""
+        if stype == "Other":
+            note = st.text_area("Enter a note to describe the issue", key=form_keys["note"])
 
         up_img = st.file_uploader("📸 Upload Scratch Image (optional)",
                                   type=["jpg","jpeg","png"], key=form_keys["img"])
 
         submit_btn = st.form_submit_button("✅ Submit")
+
+    if submit_btn:
+        if not tag:
+            st.error("Tag# is required.")
+        else:
+            po_clean = po.strip() if po.strip() != "" else None
+            chosen_date = date_val.strftime("%Y-%m-%d")
+
+            cursor.execute("""
+                INSERT INTO defects
+                (PO, Tag, Size, Quantity, Scratch_Location, Scratch_Type,
+                 Glass_Type, Rack_Type, Vendor, Date, Note)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (po_clean, tag.strip(), size.strip(), qty, loc, stype,
+                  gtype, rtype, vendor, chosen_date, note.strip()))
+            conn.commit()
+
+            if up_img:
+                safe_tag = tag.strip().replace(" ", "_")
+                ext = up_img.name.split('.')[-1].lower()
+                date_str = chosen_date
+                fname = f"{safe_tag}_{date_str}.{ext}"
+                fpath = os.path.join(IMG_DIR, fname)
+
+                counter = 1
+                while os.path.exists(fpath):
+                    fname = f"{safe_tag}_{date_str}_{counter}.{ext}"
+                    fpath = os.path.join(IMG_DIR, fname)
+                    counter += 1
+
+                Image.open(up_img).save(fpath)
+
+            st.success("✅ Submitted!")
+            st.rerun()
 
     # ---- handle SUBMIT (outside the form block) --------------------------
     if submit_btn:
