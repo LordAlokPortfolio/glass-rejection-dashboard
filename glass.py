@@ -128,7 +128,11 @@ with tab2:
         up_img = st.file_uploader("📸 Upload Scratch Image (optional)",
                                   type=["jpg","jpeg","png"], key=form_keys["img"])
 
-        submit_btn = st.form_submit_button("✅ Submit")
+        submit_btn = st.form_submit_button(
+                        "🚀  SAVE RECORD",
+        type="primary"
+                                            )
+
 
     if submit_btn:
         if not tag:
@@ -159,8 +163,9 @@ with tab2:
                 Image.open(up_img).save(fpath)
 
             st.success("✅ Submitted!")
+            st.toast("Record saved and backed up!", icon="💾")
             # 🔁 GitHub Auto-backup after each submission
-            from git_autobackup import git_autobackup
+            from git_autobackup import git_autobackup # type: ignore
             git_autobackup()
             st.rerun()
 
