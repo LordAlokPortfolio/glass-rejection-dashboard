@@ -159,6 +159,9 @@ with tab2:
                 Image.open(up_img).save(fpath)
 
             st.success("✅ Submitted!")
+            # 🔁 GitHub Auto-backup after each submission
+            from git_autobackup import git_autobackup
+            git_autobackup()
             st.rerun()
 
 # ╭────────────────────────── TAB 3 – Data Table ────────────╮
