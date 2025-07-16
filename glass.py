@@ -52,7 +52,7 @@ with tab1:
 
         # ── 1. FACTS Chart ───────────────────────────────────────
         st.markdown("### 🧾 FACTS – Core Defect Types Overview")
-        facts_only = ["Scratched", "Broken", "Missing", "Defective"]
+        facts_only = ["Scratched", "Broken", "Missing",  "Broken","Missing"]
         facts_df = dfy[dfy["Scratch_Type"].isin(facts_only)]
 
         facts_summary = (
@@ -143,7 +143,7 @@ with tab2:
 
             stype = st.selectbox(
                 "Type of Scratch",
-                ["Scratch", "Production Issue", "Defective", "Stain Mark"],
+                ["Scratch", "Production Issue", "Stain Mark", "Broken","Missing"],
                 key=form_keys["stype"])
 
 
