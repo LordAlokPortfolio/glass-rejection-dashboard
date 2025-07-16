@@ -8,7 +8,8 @@ from streamlit_autorefresh import st_autorefresh
 
 # ── DB bootstrap ───────────────────────────────────────────
 if not os.path.exists("glass_defects.db"):
-    import init_db  # creates empty table if missing
+    from init_db import init_db
+    init_db()
 
 # ── Streamlit config ───────────────────────────────────────
 st.set_page_config(page_title="Glass Guard", layout="wide")
@@ -75,6 +76,37 @@ with tab1:
             px.pie(dfy.groupby("Vendor")["Quantity"].sum().reset_index(),
                    names="Vendor", values="Quantity", hole=0.4),
             use_container_width=True)
+        defect_year_df = df[df["Year"] == sel_year]
+
+        
+        st.markdown("### 🧾 FACTS: Defects Breakdown by Glass Type")
+
+        # Only the 4 core defects
+        facts_only = ["Scratched", "Broken", "Missing", "Defective"]
+        defect_types = [d for d in defect_year_df["Scratch_Type"].unique() if d in facts_only]
+
+        for defect in defect_types:
+            sub_df = defect_year_df[defect_year_df["Scratch_Type"] == defect]
+            if sub_df.empty:
+                continue
+
+            st.markdown(f"#### 🔹 {defect}")
+
+            # Table
+            glass_summary = (
+                sub_df.groupby("Glass_Type")["Quantity"]
+                .sum()
+                .sort_values(ascending=False)
+                .reset_index()
+            )
+            st.dataframe(glass_summary, use_container_width=True, hide_index=True)
+
+            # Chart
+            fig = px.bar(glass_summary, x="Glass_Type", y="Quantity",
+                         color="Glass_Type", title=f"{defect} – by Glass Type")
+            st.plotly_chart(fig, use_container_width=True)
+
+
 
 # ╭────────────────────────── TAB 2 – Data Entry ───────────╮
 with tab2:
