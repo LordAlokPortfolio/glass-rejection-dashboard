@@ -37,8 +37,9 @@ tab1, tab2, tab3 = st.tabs(["📊 Dashboard", "📝 Data Entry", "📄 Data Tabl
 
 # ╭────────────────────────── TAB 1 – Dashboard ────────────╮
 with tab1:
-    st.title("📊 GlassGuard – Glass Scratch Summary Dashboard")
+    st.title("📊 GlassGuard – Glass Defect Summary Dashboard")
     st.caption("Track. Analyze. Improve.")
+
     if df.empty:
         st.warning("⚠️ No data yet – add a record in “📝 Data Entry”.")
     else:
@@ -49,17 +50,49 @@ with tab1:
         sel_year = st.radio("Choose Year", sorted(df["Year"].unique()), horizontal=True)
         dfy      = df[df["Year"] == sel_year]
 
-        st.markdown("### 📅 Weekly Scratch Volume")
+        # ── 1. FACTS Chart ───────────────────────────────────────
+        st.markdown("### 🧾 FACTS – Core Defect Types Overview")
+        facts_only = ["Scratched", "Broken", "Missing", "Defective"]
+        facts_df = dfy[dfy["Scratch_Type"].isin(facts_only)]
+
+        facts_summary = (
+            facts_df.groupby("Scratch_Type")["Quantity"]
+            .sum()
+            .sort_values(ascending=False)
+            .reset_index()
+        )
+        st.plotly_chart(
+            px.bar(facts_summary, x="Scratch_Type", y="Quantity",
+                   color="Scratch_Type", title="FACTS: Defect Volume"),
+            use_container_width=True
+        )
+
+        # ── 2. Scratched → Glass Type Table & Chart ─────────────
+        st.markdown("### 🔍 Scratched – Breakdown by Glass Type")
+        scratched_df = dfy[dfy["Scratch_Type"] == "Scratched"]
+        if scratched_df.empty:
+            st.info("No 'Scratched' records found for selected year.")
+        else:
+            glass_summary = (
+                scratched_df.groupby("Glass_Type")["Quantity"]
+                .sum()
+                .sort_values(ascending=False)
+                .reset_index()
+            )
+            st.dataframe(glass_summary, use_container_width=True, hide_index=True)
+
+            st.plotly_chart(
+                px.bar(glass_summary, x="Glass_Type", y="Quantity",
+                       color="Glass_Type", title="Scratched – by Glass Type"),
+                use_container_width=True
+            )
+
+        # ── 3. Remaining Charts ────────────────────────────────
+        st.markdown("### 📅 Weekly Rejections")
         weekly = dfy.groupby("Week#")["Quantity"].sum().reset_index()
         st.plotly_chart(px.line(weekly, x="Week#", y="Quantity", markers=True), use_container_width=True)
 
-        st.markdown("### 🪟 Scratch Type Distribution")
-        st.plotly_chart(
-            px.bar(dfy.groupby("Scratch_Type")["Quantity"].sum().reset_index(),
-                   x="Scratch_Type", y="Quantity", color="Scratch_Type"),
-            use_container_width=True)
-
-        st.markdown("### 🧊 Glass Type with Scratches")
+        st.markdown("### 🪟 Glass Type Distribution")
         st.plotly_chart(
             px.bar(dfy.groupby("Glass_Type")["Quantity"].sum().reset_index(),
                    x="Glass_Type", y="Quantity", color="Glass_Type"),
@@ -70,41 +103,12 @@ with tab1:
             px.pie(dfy.groupby("Rack_Type")["Quantity"].sum().reset_index(),
                    names="Rack_Type", values="Quantity", hole=0.4),
             use_container_width=True)
-        
+
         st.markdown("### 🏭 Vendor Distribution")
         st.plotly_chart(
             px.pie(dfy.groupby("Vendor")["Quantity"].sum().reset_index(),
                    names="Vendor", values="Quantity", hole=0.4),
             use_container_width=True)
-        defect_year_df = df[df["Year"] == sel_year]
-
-        
-        st.markdown("### 🧾 FACTS: Defects Breakdown by Glass Type")
-
-        # Only the 4 core defects
-        facts_only = ["Scratched", "Broken", "Missing", "Defective"]
-        defect_types = [d for d in defect_year_df["Scratch_Type"].unique() if d in facts_only]
-
-        for defect in defect_types:
-            sub_df = defect_year_df[defect_year_df["Scratch_Type"] == defect]
-            if sub_df.empty:
-                continue
-
-            st.markdown(f"#### 🔹 {defect}")
-
-            # Table
-            glass_summary = (
-                sub_df.groupby("Glass_Type")["Quantity"]
-                .sum()
-                .sort_values(ascending=False)
-                .reset_index()
-            )
-            st.dataframe(glass_summary, use_container_width=True, hide_index=True)
-
-            # Chart
-            fig = px.bar(glass_summary, x="Glass_Type", y="Quantity",
-                         color="Glass_Type", title=f"{defect} – by Glass Type")
-            st.plotly_chart(fig, use_container_width=True)
 
 
 
