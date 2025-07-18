@@ -303,8 +303,8 @@ with tab3:
             use_container_width=True
         )
 
-# ╭────────────────────── Today’s Scratch Summary ──────────╮
-st.markdown("### 📋 Today’s Scratch Summary")
+#╭────────────────────── Today’s Scratch Summary ──────────╮
+st.markdown("### 📋 Today’s Scratch Summary (with Images)")
 
 if st.button("Generate Table", key="gen_today"):
     if df.empty:
@@ -315,36 +315,38 @@ if st.button("Generate Table", key="gen_today"):
         if today_df.empty:
             st.warning("No records logged today.")
         else:
-            rows = []
+            summary_rows = []
             for _, row in today_df.iterrows():
                 tag = row["Tag"]
                 date_val = row["Date"]
                 qty = row["Quantity"]
-                hex_base = tag.strip().replace(" ", "_") + "_" + str(date_val.date())
+                safe_tag = tag.strip().replace(" ", "_")
+                date_str = str(date_val.date()) if pd.notna(date_val) else "NaT"
+                hex_base = f"{safe_tag}_{date_str}"
                 match = list(IMG_DIR.glob(f"{hex_base}*.hex"))
-                
-                if match:
-                    hex_file = match[0]
-                    with open(hex_file, "r") as f:
-                        hex_data = bytes.fromhex(f.read())
-                    image_display = Image.open(io.BytesIO(hex_data))
-                else:
-                    image_display = "❌ No Image"
 
-                rows.append({
+                if match:
+                    with open(match[0], "r") as f:
+                        img_bytes = bytes.fromhex(f.read())
+                    image_data = Image.open(io.BytesIO(img_bytes))
+                else:
+                    image_data = "❌ No Image"
+
+                summary_rows.append({
                     "Tag#": tag,
-                    "Date": date_val.date(),
+                    "Date": date_str,
                     "Qty": qty,
-                    "Image": image_display
+                    "Image": image_data
                 })
 
-            # Render table with images
-            for row in rows:
-                cols = st.columns([1, 1, 1, 2])
-                cols[0].write(row["Tag#"])
-                cols[1].write(row["Date"])
-                cols[2].write(row["Qty"])
+            # Display as dataframe with images
+            for idx, row in enumerate(summary_rows):
+                st.markdown(f"**Row {idx+1}**")
+                c1, c2, c3, c4 = st.columns([1, 1, 1, 2])
+                c1.write(row["Tag#"])
+                c2.write(row["Date"])
+                c3.write(row["Qty"])
                 if isinstance(row["Image"], str):
-                    cols[3].write(row["Image"])
+                    c4.write(row["Image"])
                 else:
-                    cols[3].image(row["Image"], width=150)
+                    c4.image(row["Image"], width=150)
