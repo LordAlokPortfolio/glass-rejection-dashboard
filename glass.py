@@ -310,7 +310,7 @@ if st.button("Generate Table", key="gen_today"):
     if df.empty:
         st.warning("No data in DB.")
     else:
-        # make sure Date is datetime
+        # ensure Date is datetime
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
         today_df = df[df["Date"].dt.date == date.today()]
 
@@ -322,29 +322,30 @@ if st.button("Generate Table", key="gen_today"):
                 today_df[["Tag", "Date", "Quantity"]]
                 .rename(columns={"Tag":"Tag#", "Quantity":"QTY"})
             )
-            display_df["Date"] = display_df["Date"].dt.strftime("%Y-%m-%d")
+            display_df["Date"] = pd.to_datetime(display_df["Date"]).dt.strftime("%Y-%m-%d")
 
+            # show the table
             st.dataframe(display_df, use_container_width=True, height=300)
 
-# let user pick a row to download its image
-sel = st.selectbox("Select Tag# to download its image", display_df["Tag#"])
-row = today_df[today_df["Tag"] == sel].iloc[0]
+            # let user pick a row to download its image
+            sel = st.selectbox("Select Tag# to download its image", display_df["Tag#"])
+            row = today_df[today_df["Tag"] == sel].iloc[0]
 
-# construct hex filename
-date_str = row["Date"].strftime("%Y-%m-%d")
-hex_path = IMG_DIR / f"{sel.replace(' ','_')}_{date_str}.hex"
+            # construct hex filename
+            date_str = row["Date"].strftime("%Y-%m-%d")
+            hex_path = IMG_DIR / f"{sel.replace(' ','_')}_{date_str}.hex"
 
-if hex_path.exists():
-    with open(hex_path, "r") as f:
-        img_bytes = bytes.fromhex(f.read())
-    st.download_button(
-        "⬇️ Download Image",
-        data=img_bytes,
-        file_name=f"{sel}_{date_str}.jpg",
-        mime="image/jpeg"
-    )
-else:
-    st.info("No image uploaded for this record.")
+            if hex_path.exists():
+                with open(hex_path, "r") as f:
+                    img_bytes = bytes.fromhex(f.read())
+                st.download_button(
+                    "⬇️ Download Image",
+                    data=img_bytes,
+                    file_name=f"{sel}_{date_str}.jpg",
+                    mime="image/jpeg"
+                )
+            else:
+                st.info("No image uploaded for this record.")
 
 
         
