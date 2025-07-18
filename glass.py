@@ -303,27 +303,52 @@ with tab3:
             use_container_width=True
         )
 
-# ╭────────────────────── Today’s Scratch Summary ──────────╮
-st.markdown("### 📋 Today’s Scratch Summary")
+# #╭────────────────────── Today’s Scratch Summary ──────────╮
+st.markdown("### 📋 Today’s Scratch Summary (with Images)")
 
 if st.button("Generate Table", key="gen_today"):
     if df.empty:
         st.warning("No data in DB.")
     else:
-        # make sure Date is datetime
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
         today_df = df[df["Date"].dt.date == date.today()]
-
         if today_df.empty:
             st.warning("No records logged today.")
         else:
-            # build clean table
-            display_df = (
-                today_df[["Tag", "Date", "Quantity"]]
-                .rename(columns={"Tag":"Tag#", "Quantity":"QTY"})
-            )
-            display_df["Date"] = display_df["Date"].dt.strftime("%Y-%m-%d")
+            table_data = []
+            for _, row in today_df.iterrows():
+                tag = row["Tag"]
+                date_val = row["Date"]
+                qty = row["Quantity"]
+                safe_tag = tag.strip().replace(" ", "_")
+                date_str = str(date_val.date()) if pd.notna(date_val) else "NaT"
+                hex_base = f"{safe_tag}_{date_str}"
+                match = list(IMG_DIR.glob(f"{hex_base}*.hex"))
 
-            st.dataframe(display_df, use_container_width=True, height=300)
+                if match:
+                    with open(match[0], "r") as f:
+                        img_bytes = bytes.fromhex(f.read())
+                    image_display = Image.open(io.BytesIO(img_bytes))
+                else:
+                    image_display = None
+
+                table_data.append({
+                    "Tag#": tag,
+                    "Date": date_str,
+                    "Qty": qty,
+                    "Image": image_display
+                })
+
+            # 📦 Show table with images using columns
+            for row in table_data:
+                c1, c2, c3, c4 = st.columns([2, 2, 1, 3])
+                c1.markdown(f"**{row['Tag#']}**")
+                c2.write(row["Date"])
+                c3.write(row["Qty"])
+                if row["Image"]:
+                    c4.image(row["Image"], width=150)
+                else:
+                    c4.caption("❌ No Image")
+
 
         
