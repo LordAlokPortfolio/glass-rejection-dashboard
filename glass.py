@@ -67,14 +67,19 @@ with tab1:
             use_container_width=True
         )
 
-        # ── 2. Scratched → Glass Type Table & Chart ─────────────
-        st.markdown("### 🔍 Scratched – Breakdown by Glass Type")
-        scratched_df = dfy[dfy["Scratch_Type"] == "Scratched"]
-        if scratched_df.empty:
-            st.info("No 'Scratched' records found for selected year.")
+
+        # ── 2. Dynamic Scratch Type → Glass Type Table & Chart ─────────────
+        st.markdown("### 🔍 Breakdown by Glass Type for Selected Scratch Type")
+        available_scratch_types = dfy["Scratch_Type"].unique().tolist()
+        selected_scratch_type = st.selectbox(
+            "Select Scratch Type", available_scratch_types, key="dashboard_scratch_type"
+        )
+        filtered_df = dfy[dfy["Scratch_Type"] == selected_scratch_type]
+        if filtered_df.empty:
+            st.info(f"No '{selected_scratch_type}' records found for selected year.")
         else:
             glass_summary = (
-                scratched_df.groupby("Glass_Type")["Quantity"]
+                filtered_df.groupby("Glass_Type")["Quantity"]
                 .sum()
                 .sort_values(ascending=False)
                 .reset_index()
@@ -82,8 +87,13 @@ with tab1:
             st.dataframe(glass_summary, use_container_width=True, hide_index=True)
 
             st.plotly_chart(
-                px.bar(glass_summary, x="Glass_Type", y="Quantity",
-                       color="Glass_Type", title="Scratched – by Glass Type"),
+                px.bar(
+                    glass_summary,
+                    x="Glass_Type",
+                    y="Quantity",
+                    color="Glass_Type",
+                    title=f"{selected_scratch_type} – by Glass Type"
+                ),
                 use_container_width=True
             )
 
