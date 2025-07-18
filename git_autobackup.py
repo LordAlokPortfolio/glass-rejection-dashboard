@@ -1,7 +1,8 @@
 import os, subprocess, datetime
 
 def git_autobackup():
-    from streamlit.runtime.secrets import secrets
+    import streamlit as st
+    secrets = st.secrets
 
     os.environ["GIT_AUTHOR_NAME"] = secrets["GIT_USER"]
     os.environ["GIT_COMMITTER_NAME"] = secrets["GIT_USER"]
