@@ -170,15 +170,16 @@ with tab2:
                 "Notes / Extra details (optional)",
                 placeholder="E.g. scratch happened during unloading…",
                 key=form_keys["note"])
-
-        up_img = st.file_uploader("📸 Upload Scratch Image (optional)",
-                                  type=["jpg","jpeg","png"], key=form_keys["img"])
-
-        submit_btn = st.form_submit_button(
-                        "🚀  SAVE RECORD",
-        type="primary"
-                                            )
-
+            
+    up_img = st.file_uploader("Upload Image (Max 2MB)", type=["jpg", "jpeg", "png"], key=form_keys["img"])
+    submit_btn = st.form_submit_button("🚀  SAVE RECORD", type="primary")
+                   
+    if submit_btn:
+        if not tag:
+            st.error("Tag# is required.")
+        else:
+            po_clean = po.strip() if po.strip() else None
+            chosen_date = date_val.strftime("%Y-%m-%d")
 
     if submit_btn:
         if not tag:
@@ -186,6 +187,33 @@ with tab2:
         else:
             po_clean = po.strip() if po.strip() else None
             chosen_date = date_val.strftime("%Y-%m-%d")
+
+            # ── Image validation & hex save ──
+            if up_img:
+                max_size_mb = 2
+                up_img.seek(0, os.SEEK_END)
+                size_mb = up_img.tell() / (1024 * 1024)
+                up_img.seek(0)
+
+                if size_mb > max_size_mb:
+                    st.error(f"Image too large. Limit is {max_size_mb} MB.")
+                    st.stop()
+                else:
+                    img_bytes = up_img.read()
+                    hex_str = img_bytes.hex()
+
+                    safe_tag = tag.strip().replace(" ", "_")
+                    hex_filename = f"{safe_tag}_{chosen_date}.hex"
+                    hex_path = IMG_DIR / hex_filename
+
+                    counter = 1
+                    while hex_path.exists():
+                        hex_filename = f"{safe_tag}_{chosen_date}_{counter}.hex"
+                        hex_path = IMG_DIR / hex_filename
+                        counter += 1
+
+                    with open(hex_path, "w") as f:
+                        f.write(hex_str)
 
             cursor.execute("""
                 INSERT INTO defects
@@ -196,24 +224,12 @@ with tab2:
                   gtype, rtype, vendor, chosen_date, note.strip()))
             conn.commit()
 
-            if up_img:
-                safe_tag = tag.strip().replace(" ", "_")
-                ext = up_img.name.split('.')[-1].lower()
-                fname = f"{safe_tag}_{chosen_date}.{ext}"
-                fpath = IMG_DIR / fname
-                counter = 1
-                while fpath.exists():
-                    fname = f"{safe_tag}_{chosen_date}_{counter}.{ext}"
-                    fpath = IMG_DIR / fname
-                    counter += 1
-                Image.open(up_img).save(fpath)
-
             st.success("✅ Submitted!")
             st.toast("Record saved and backed up!", icon="💾")
-            # 🔁 GitHub Auto-backup after each submission
-            from git_autobackup import git_autobackup # type: ignore
+            from git_autobackup import git_autobackup  # type: ignore
             git_autobackup()
             st.rerun()
+
 
 # ╭────────────────────────── TAB 3 – Data Table ────────────╮
 with tab3:
