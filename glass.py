@@ -71,8 +71,8 @@ with tab1:
         # ── 2. Dynamic Scratch Type → Glass Type Table & Chart ─────────────
         st.markdown("### 🔍 Breakdown by Glass Type for Selected Scratch Type")
         available_scratch_types = dfy["Scratch_Type"].unique().tolist()
-        selected_scratch_type = st.selectbox(
-            "Select Scratch Type", available_scratch_types, key="dashboard_scratch_type"
+        selected_scratch_type = st.radio(
+            "Select Scratch Type", available_scratch_types, key="dashboard_scratch_type", horizontal=True
         )
         filtered_df = dfy[dfy["Scratch_Type"] == selected_scratch_type]
         if filtered_df.empty:
