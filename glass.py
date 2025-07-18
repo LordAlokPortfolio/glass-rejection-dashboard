@@ -315,7 +315,7 @@ if st.button("Generate Table", key="gen_today"):
         if today_df.empty:
             st.warning("No records logged today.")
         else:
-            summary_rows = []
+            table_data = []
             for _, row in today_df.iterrows():
                 tag = row["Tag"]
                 date_val = row["Date"]
@@ -328,25 +328,25 @@ if st.button("Generate Table", key="gen_today"):
                 if match:
                     with open(match[0], "r") as f:
                         img_bytes = bytes.fromhex(f.read())
-                    image_data = Image.open(io.BytesIO(img_bytes))
+                    image_display = Image.open(io.BytesIO(img_bytes))
                 else:
-                    image_data = "❌ No Image"
+                    image_display = None
 
-                summary_rows.append({
+                table_data.append({
                     "Tag#": tag,
                     "Date": date_str,
                     "Qty": qty,
-                    "Image": image_data
+                    "Image": image_display
                 })
 
-            # Display as dataframe with images
-            for idx, row in enumerate(summary_rows):
-                st.markdown(f"**Row {idx+1}**")
-                c1, c2, c3, c4 = st.columns([1, 1, 1, 2])
-                c1.write(row["Tag#"])
+            # 📦 Show table with images using columns
+            for row in table_data:
+                c1, c2, c3, c4 = st.columns([2, 2, 1, 3])
+                c1.markdown(f"**{row['Tag#']}**")
                 c2.write(row["Date"])
                 c3.write(row["Qty"])
-                if isinstance(row["Image"], str):
-                    c4.write(row["Image"])
-                else:
+                if row["Image"]:
                     c4.image(row["Image"], width=150)
+                else:
+                    c4.caption("❌ No Image")
+        
