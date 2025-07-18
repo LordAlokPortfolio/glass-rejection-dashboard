@@ -31,6 +31,7 @@ os.makedirs(IMG_DIR, exist_ok=True)
 conn   = sqlite3.connect(DB_PATH, check_same_thread=False)
 cursor = conn.cursor()
 df     = pd.read_sql_query("SELECT * FROM defects", conn)
+df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
 
 # ── Tabs ───────────────────────────────────────────────────
 tab1, tab2, tab3 = st.tabs(["📊 Dashboard", "📝 Data Entry", "📄 Data Table"])
