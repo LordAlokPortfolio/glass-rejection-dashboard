@@ -315,56 +315,36 @@ if st.button("Generate Table", key="gen_today"):
         if today_df.empty:
             st.warning("No records logged today.")
         else:
-            table = (
-                today_df.loc[:, ["PO", "Tag", "Size", "Quantity", "Glass_Type", "Date"]]
-                .rename(columns={
-                    "PO": "PO#",
-                    "Tag": "Tag#",
-                    "Quantity": "QTY",
-                    "Glass_Type": "Glass Type"
+            rows = []
+            for _, row in today_df.iterrows():
+                tag = row["Tag"]
+                date_val = row["Date"]
+                qty = row["Quantity"]
+                hex_base = tag.strip().replace(" ", "_") + "_" + str(date_val.date())
+                match = list(IMG_DIR.glob(f"{hex_base}*.hex"))
+                
+                if match:
+                    hex_file = match[0]
+                    with open(hex_file, "r") as f:
+                        hex_data = bytes.fromhex(f.read())
+                    image_display = Image.open(io.BytesIO(hex_data))
+                else:
+                    image_display = "❌ No Image"
+
+                rows.append({
+                    "Tag#": tag,
+                    "Date": date_val.date(),
+                    "Qty": qty,
+                    "Image": image_display
                 })
-            )
-            st.dataframe(table, use_container_width=True, hide_index=True)
 
-            # ▸ Copy to clipboard button
-            clip = table.to_csv(index=False, sep="\t").replace("`", "'").replace("\n", "\\n")
-            st.components.v1.html(
-                f"""
-                <button onclick="navigator.clipboard.writeText(`{clip}`)
-                          .then(()=>alert('✅ Copied to clipboard!'))">
-                    📋 Copy Table to Clipboard
-                </button>
-                """,
-                height=50
-            )
-
-            # ▸ Select one row to preview image (if exists)
-            selected_tag = st.selectbox("🔍 Select Tag# to preview uploaded image", table["Tag#"])
-            row = today_df[today_df["Tag"] == selected_tag].iloc[0]
-
-            # Safely format filename
-            tag_str = row["Tag"].strip().replace(" ", "_")
-            if pd.isnull(row["Date"]):
-                date_str = "unknown_date"
-            else:
-                date_str = pd.to_datetime(row["Date"]).strftime("%Y-%m-%d")
-            hex_base = f"{tag_str}_{date_str}"
-            hex_path = IMG_DIR / f"{hex_base}.hex"
-
-            st.markdown(f"🧾 **Tag#: {row['Tag']} | Date: {row['Date']} | Qty: {row['Quantity']}**")
-
-            if hex_path.exists():
-                with open(hex_path, "r") as f:
-                    hex_data = f.read()
-                    img_bytes = bytes.fromhex(hex_data)
-                    st.image(img_bytes, caption=f"🖼️ Uploaded Image for {row['Tag']}", use_column_width=True)
-
-                    # Offer image download
-                    st.download_button(
-                        label="⬇️ Download Image",
-                        data=img_bytes,
-                        file_name=f"{hex_base}.jpg",
-                        mime="image/jpeg"
-                    )
-            else:
-                st.info("🖼️ No image uploaded for this record.")
+            # Render table with images
+            for row in rows:
+                cols = st.columns([1, 1, 1, 2])
+                cols[0].write(row["Tag#"])
+                cols[1].write(row["Date"])
+                cols[2].write(row["Qty"])
+                if isinstance(row["Image"], str):
+                    cols[3].write(row["Image"])
+                else:
+                    cols[3].image(row["Image"], width=150)
