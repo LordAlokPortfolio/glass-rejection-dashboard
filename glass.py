@@ -225,6 +225,9 @@ with tab2:
                   gtype, rtype, vendor, chosen_date, note.strip()))
             conn.commit()
 
+            # ⬇️ Refresh the DataFrame so latest data (incl. Date) is available
+            df = pd.read_sql_query("SELECT * FROM defects", conn)
+
             st.success("✅ Submitted!")
             st.toast("Record saved and backed up!", icon="💾")
             from git_autobackup import git_autobackup  # type: ignore
