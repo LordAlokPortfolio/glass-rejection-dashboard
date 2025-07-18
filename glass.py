@@ -265,7 +265,12 @@ with tab3:
         for i, row in df.sort_values("Date", ascending=False).iterrows():
             st.write(f"**Tag#:** {row['Tag']}  |  **Date:** {row['Date']}  |  **Qty:** {row['Quantity']}")
 
-            hex_base = row["Tag"].strip().replace(" ", "_") + "_" + str(row["Date"])
+            hex_base = row["Tag"].strip().replace(" ", "_")
+            if pd.notna(row["Date"]):
+                hex_base += "_" + str(pd.to_datetime(row["Date"]).date())
+            else:
+                hex_base += "_unknown"
+
             possible_files = list(IMG_DIR.glob(f"{hex_base}*.hex"))
             if possible_files:
                 hex_path = possible_files[0]
