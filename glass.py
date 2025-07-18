@@ -171,8 +171,8 @@ with tab2:
                 placeholder="E.g. scratch happened during unloading…",
                 key=form_keys["note"])
             
-    up_img = st.file_uploader("Upload Image (Max 2MB)", type=["jpg", "jpeg", "png"], key=form_keys["img"])
-    submit_btn = st.form_submit_button("🚀  SAVE RECORD", type="primary")
+            up_img = st.file_uploader("Upload Image (Max 2MB)", type=["jpg", "jpeg", "png"], key=form_keys["img"])
+            submit_btn = st.form_submit_button("🚀  SAVE RECORD", type="primary")
                    
     if submit_btn:
         if not tag:
