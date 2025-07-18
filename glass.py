@@ -242,7 +242,7 @@ with tab3:
         top = df["Scratch_Type"].mode()[0]
         col3.metric("Top Type", f"{top} ({df[df['Scratch_Type']==top]['Quantity'].sum()})")
 
-    # ── Admin delete by Tag# ────────────────────────────────
+    # Admin delete by Tag#
     with st.expander("🔒 Admin: Delete rows by Tag#"):
         tags_in = st.text_input("Tag#s to delete (comma-separated)")
         if st.button("🚨 Delete Selected"):
@@ -256,15 +256,32 @@ with tab3:
             else:
                 st.warning("No Tag#s entered.")
 
-    # show table
-    st.dataframe(
-        df.sort_values("Date", ascending=False),
-        use_container_width=True,
-        height=600
-    )
+    # Show table with optional image downloads
+    if df.empty:
+        st.info("No data available.")
+    else:
+        st.markdown("### 📁 Records (with image downloads if available)")
+        for i, row in df.sort_values("Date", ascending=False).iterrows():
+            st.write(f"**Tag#:** {row['Tag']}  |  **Date:** {row['Date']}  |  **Qty:** {row['Quantity']}")
 
-    # ▸ Excel backup button
-    if not df.empty:
+            hex_base = row["Tag"].strip().replace(" ", "_") + "_" + row["Date"]
+            possible_files = list(IMG_DIR.glob(f"{hex_base}*.hex"))
+            if possible_files:
+                hex_path = possible_files[0]
+                with open(hex_path, "r") as f:
+                    hex_str = f.read()
+                    img_bytes = bytes.fromhex(hex_str)
+                    st.download_button(
+                        label="📷 Download Image",
+                        data=img_bytes,
+                        file_name=f"{row['Tag']}_{row['Date']}.jpg",
+                        mime="image/jpeg"
+                    )
+            else:
+                st.caption("🖼️ No image uploaded for this record.")
+            st.divider()
+
+        # Excel export
         excel_buf = io.BytesIO()
         df.to_excel(excel_buf, index=False)
         excel_buf.seek(0)
