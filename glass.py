@@ -191,7 +191,7 @@ with tab2:
 
             st.success("✅ Submitted!")
             st.toast("Record saved!", icon="💾")
-            st.experimental_rerun()  # updated rerun call
+            st.rerun()  # updated rerun call
             
 
 # ╭────────────────────────── TAB 3 – Data Table ────────────╮
