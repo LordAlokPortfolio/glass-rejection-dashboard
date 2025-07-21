@@ -215,6 +215,11 @@ with tab3:
               })
         )
         all_df["Date"] = all_df["Date"].dt.strftime("%Y-%m-%d")
+         # ◀── make Sr. No start at 1  ──▶
+        all_df = all_df.reset_index(drop=True)   # make index 0,1,2…
+        all_df.index = all_df.index + 1          # shift to 1,2,3…
+        all_df.index.name = "Sr. No"             # optional: label that column
+        
         st.dataframe(all_df, use_container_width=True, height=350)
 
         
