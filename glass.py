@@ -19,7 +19,6 @@ st_autorefresh(interval=300_000, key="auto_refresh")   # 5-min auto-refresh
 st.markdown("<div style='text-align:center'>", unsafe_allow_html=True)
 st.image("KV-Logo-1.png", width=150)
 st.markdown("</div>", unsafe_allow_html=True)
-st.sidebar.info("Build: 2025-07-11 09:12")
 
 # ── Paths ──────────────────────────────────────────────────
 BASE_DIR = pathlib.Path(__file__).parent
