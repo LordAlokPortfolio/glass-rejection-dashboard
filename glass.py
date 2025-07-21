@@ -147,6 +147,9 @@ with tab2:
             vendor = st.selectbox("Vendor", ["Cardinal CG","Woodbridge","Universal","Trimlite"], key=form_keys["vendor"])
             note   = st.text_area("Notes / Extra details (optional)", key=form_keys["note"])
         up_img = st.file_uploader("Upload Image (Max 2MB)", type=["jpg","jpeg","png"], key=form_keys["img"])
+        # ── PREVIEW RIGHT AFTER UPLOAD ─────────────────────────
+        if up_img:
+            st.image(up_img, caption="🖼️ Preview", use_column_width=True)
         submit_btn = st.form_submit_button("🚀 SAVE RECORD")
 
     if submit_btn:
@@ -263,3 +266,4 @@ with tab3:
             file_name=f"glass_defects_backup_{stamp}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+# ╭────────────────────────── END ──────────────────────────╮
