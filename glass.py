@@ -195,29 +195,8 @@ with tab2:
 with tab3:
     st.title("📄 All Scratch Records")
 
-    # Key metrics
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Total Records", len(df))
-    c2.metric("Total Scratches", int(df["Quantity"].sum()) if not df.empty else 0)
-    if not df.empty:
-        top = df["Scratch_Type"].mode()[0]
-        c3.metric("Top Type", f"{top} ({df[df['Scratch_Type']==top]['Quantity'].sum()})")
+    # … your metrics and delete-expander here …
 
-    # Admin delete
-    with st.expander("🔒 Admin: Delete rows by Tag#"):
-        tags_in = st.text_input("Tag#s to delete (comma-separated)")
-        if st.button("🚨 Delete Selected"):
-            tags = [t.strip() for t in tags_in.split(",") if t.strip()]
-            if tags:
-                ph = ",".join("?"*len(tags))
-                cursor.execute(f"DELETE FROM defects WHERE Tag IN ({ph})", tags)
-                conn.commit()
-                st.success(f"Deleted: {', '.join(tags)}")
-                st.rerun()
-            else:
-                st.warning("No tags entered.")
-
-    # All‑records table
     if df.empty:
         st.info("No data available.")
     else:
@@ -234,23 +213,20 @@ with tab3:
         st.dataframe(all_df, use_container_width=True, height=400)
 
         sel = st.selectbox("Select Tag# to download its image", all_df["Tag#"])
-        row = df[df["Tag"]==sel].iloc[0]
-        # handle NaT safely
-        date_val = row["Date"]
-        if pd.isna(date_val):
-            ds = "unknown"
-        else:
-            ds = date_val.strftime("%Y-%m-%d")
+        row = df[df["Tag"] == sel].iloc[0]
 
-        hx = IMG_DIR / f"{sel.replace(' ','_')}_{ds}.hex"
+        # build a prefix and glob for ANY matching .hex
+        prefix = sel.replace(" ", "_")
+        matches = list(IMG_DIR.glob(f"{prefix}_*.hex"))
 
-        if hx.exists():
-            img_bytes = bytes.fromhex(hx.read_text())
+        if matches:
+            hex_path = matches[0]
+            img_bytes = bytes.fromhex(hex_path.read_text())
             st.download_button(
                 "⬇️ Download Image",
                 data=img_bytes,
-                file_name=f"{sel}_{ds}.jpg",
-                mime="image/jpeg"
+                file_name=f"{sel}.jpg",
+                mime="image/jpeg",
             )
         else:
             st.info("No image for this record.")
@@ -264,6 +240,8 @@ with tab3:
             "⬇️ Download full backup (Excel)",
             data=buf,
             file_name=f"glass_defects_backup_{stamp}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
         )
+
 # ╭────────────────────────── END ──────────────────────────╮
