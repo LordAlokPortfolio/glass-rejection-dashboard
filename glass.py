@@ -177,7 +177,7 @@ with tab2:
         cursor.execute("""
             INSERT INTO defects
             (PO, Tag, Size, Quantity, Scratch_Location, Scratch_Type,
-            Glass_Type, Rack_Type, Vendor, Date, Note, ImageData)
+             Glass_Type, Rack_Type, Vendor, Date, Note, ImageData)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (po_clean, tag.strip(), size.strip(), qty, loc, stype,
               gtype, rtype, vendor, chosen_date, note.strip(), img_bytes))
@@ -186,6 +186,7 @@ with tab2:
         st.success("✅ Submitted!")
         st.toast("Record saved!", icon="💾")
         st.rerun()
+
 
 
 
