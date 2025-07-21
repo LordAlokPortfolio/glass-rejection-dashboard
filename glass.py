@@ -149,7 +149,8 @@ with tab2:
         up_img = st.file_uploader("Upload Image (Max 2MB)", type=["jpg","jpeg","png"], key=form_keys["img"])
         # ── PREVIEW RIGHT AFTER UPLOAD ─────────────────────────
         if up_img:
-            st.image(up_img, caption="🖼️ Preview", use_container_width=True)
+            st.image(up_img, caption="🖼️ Preview", use_container_width=False, width=200 #adjust to taste
+            )
         submit_btn = st.form_submit_button("🚀 SAVE RECORD")
 
     if submit_btn:
@@ -193,6 +194,20 @@ with tab2:
 
 # ╭────────────────────────── TAB 3 – Data Table ────────────╮
 with tab3:
+       # ── Mini Stats ───────────────────────────────────────
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Total Records", len(df))
+    m2.metric("Total Scratches", int(df["Quantity"].sum()))
+
+    # compute which Glass_Type has the highest total Quantity
+    glass_sums = df.groupby("Glass_Type")["Quantity"].sum()
+    if not glass_sums.empty:
+        top_glass = glass_sums.idxmax()
+        top_count = int(glass_sums.max())
+        m3.metric("Top Glass Type", f"{top_glass} ({top_count})")
+    else:
+        m3.metric("Top Glass Type", "N/A")
+    # ── Main Table ─────────────────────────────────────────
     st.title("📄 All Scratch Records")
 
     # … your metrics and delete-expander here …
