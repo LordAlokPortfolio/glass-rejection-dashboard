@@ -6,36 +6,40 @@ from datetime import datetime, date
 from PIL import Image
 from streamlit_autorefresh import st_autorefresh
 
-# ── DB bootstrap ───────────────────────────────────────────
-if not os.path.exists("glass_defects.db"):
-    from init_db import init_db
-    init_db()
-
-# ── Streamlit config ───────────────────────────────────────
-st.set_page_config(page_title="Glass Guard", layout="wide")
-st_autorefresh(interval=300_000, key="auto_refresh")   # 5‑min auto-refresh
-
-# ── Logo ───────────────────────────────────────────────────
-st.markdown("<div style='text-align:center'>", unsafe_allow_html=True)
-st.image("KV-Logo-1.png", width=150)
-st.markdown("</div>", unsafe_allow_html=True)
-
 # ── Paths ──────────────────────────────────────────────────
 BASE_DIR = pathlib.Path(__file__).parent
 DB_PATH  = BASE_DIR / "glass_defects.db"
 IMG_DIR  = BASE_DIR / "images"
 os.makedirs(IMG_DIR, exist_ok=True)
 
-# ── DB connection & dataframe ──────────────────────────────
-conn   = sqlite3.connect(DB_PATH, check_same_thread=False)
+# ── DB bootstrap ───────────────────────────────────────────
+if not os.path.exists(DB_PATH):
+    from init_db import init_db
+    init_db()
+
+# ── DB connection ──────────────────────────────────────────
+conn = sqlite3.connect(DB_PATH, check_same_thread=False)
 cursor = conn.cursor()
 
 #── CLEANUP any leftover test records (optional) ────────────
 cursor.execute("DELETE FROM defects WHERE Tag LIKE '%test%'")
 conn.commit()
 
-df     = pd.read_sql_query("SELECT * FROM defects", conn)
-df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+# ── Load df into session_state (or load if not present) ────
+if "df" not in st.session_state:
+    st.session_state["df"] = pd.read_sql_query("SELECT * FROM defects", conn)
+    st.session_state["df"]["Date"] = pd.to_datetime(st.session_state["df"]["Date"], errors="coerce")
+
+df = st.session_state["df"]
+
+# ── Streamlit config ───────────────────────────────────────
+st.set_page_config(page_title="Glass Guard", layout="wide")
+st_autorefresh(interval=300_000, key="auto_refresh")   # 5-min auto-refresh
+
+# ── Logo ───────────────────────────────────────────────────
+st.markdown("<div style='text-align:center'>", unsafe_allow_html=True)
+st.image("KV-Logo-1.png", width=150)
+st.markdown("</div>", unsafe_allow_html=True)
 
 # ── Tabs ───────────────────────────────────────────────────
 tab1, tab2, tab3 = st.tabs(["📊 Dashboard", "📝 Data Entry", "📄 Data Table"])
@@ -109,7 +113,6 @@ with tab1:
         st.plotly_chart(px.pie(vendor, names="Vendor", values="Quantity", hole=0.4),
                         use_container_width=True)
 
-
 # ╭────────────────────────── TAB 2 – Data Entry ───────────╮
 with tab2:
     st.title("📝 Enter New Scratch Record")
@@ -149,10 +152,9 @@ with tab2:
             vendor = st.selectbox("Vendor", ["Cardinal CG","Woodbridge","Universal","Trimlite"], key=form_keys["vendor"])
             note   = st.text_area("Notes / Extra details (optional)", key=form_keys["note"])
         up_img = st.file_uploader("Upload Image (Max 2MB)", type=["jpg","jpeg","png"], key=form_keys["img"])
-        # ── PREVIEW RIGHT AFTER UPLOAD ─────────────────────────
         if up_img:
-            st.image(up_img, caption="🖼️ Preview", use_container_width=False, width=200 #adjust to taste
-            )
+            st.image(up_img, caption="🖼️ Preview", use_container_width=False, width=200)
+
         submit_btn = st.form_submit_button("🚀 SAVE RECORD")
 
     if submit_btn:
@@ -162,49 +164,44 @@ with tab2:
             st.error("Date is required.")
         else:
             po_clean = po.strip() or None
-        chosen_date = date_val.strftime("%Y-%m-%d")
-        st.write("Chosen date for insert:", chosen_date)    # <--- ADD THIS
+            chosen_date = date_val.strftime("%Y-%m-%d")
+            st.write("Chosen date for insert:", chosen_date)  # debug line
 
-        img_bytes = None
-        if up_img:
-            up_img.seek(0, os.SEEK_END)
-            if up_img.tell() > 2 * 1024 * 1024:
-                st.error("Image exceeds 2 MB.")
-                st.stop()
-            up_img.seek(0)
-            img_bytes = up_img.read()
+            img_bytes = None
+            if up_img:
+                up_img.seek(0, os.SEEK_END)
+                if up_img.tell() > 2 * 1024 * 1024:
+                    st.error("Image exceeds 2 MB.")
+                    st.stop()
+                up_img.seek(0)
+                img_bytes = up_img.read()
 
-        # <--- ADD THIS to see the values being inserted
-        st.write("Tuple for insert:", (po_clean, tag.strip(), size.strip(), qty, loc, stype,
-                                      gtype, rtype, vendor, chosen_date, note.strip(), img_bytes))
+            cursor.execute("""
+                INSERT INTO defects
+                (PO, Tag, Size, Quantity, Scratch_Location, Scratch_Type,
+                 Glass_Type, Rack_Type, Vendor, Date, Note, ImageData)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (po_clean, tag.strip(), size.strip(), qty, loc, stype,
+                  gtype, rtype, vendor, chosen_date, note.strip(), img_bytes))
+            conn.commit()
 
-        cursor.execute("""
-            INSERT INTO defects
-            (PO, Tag, Size, Quantity, Scratch_Location, Scratch_Type,
-            Glass_Type, Rack_Type, Vendor, Date, Note, ImageData)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (po_clean, tag.strip(), size.strip(), qty, loc, stype,
-              gtype, rtype, vendor, chosen_date, note.strip(), img_bytes))
-        conn.commit()
+            # Update session_state df so all tabs show latest data
+            st.session_state["df"] = pd.read_sql_query("SELECT * FROM defects", conn)
+            st.session_state["df"]["Date"] = pd.to_datetime(st.session_state["df"]["Date"], errors="coerce")
 
-        # <--- ADD THIS to show the latest DB row
-        st.write(pd.read_sql_query("SELECT * FROM defects ORDER BY ROWID DESC LIMIT 1", conn))
+            st.success("✅ Submitted!")
+            st.toast("Record saved!", icon="💾")
+            st.experimental_rerun()  # updated rerun call
+            
 
-        st.success("✅ Submitted!")
-        st.toast("Record saved!", icon="💾")
-        #st.rerun()
-
-
-
-
-
-#╭────────────────────────── TAB 3 – Data Table ────────────╮
+# ╭────────────────────────── TAB 3 – Data Table ────────────╮
 with tab3:
-    # ── Mini Stats ───────────────────────────────────────
+    df = st.session_state["df"]  # Always use updated df from session state
+
     m1, m2, m3 = st.columns(3)
     m1.metric("Total Records", len(df))
     m2.metric("Total Scratches", int(df["Quantity"].sum()) if not df.empty else 0)
-    # top glass type
+
     glass_sums = df.groupby("Glass_Type")["Quantity"].sum()
     if not glass_sums.empty:
         top_glass = glass_sums.idxmax()
@@ -221,15 +218,17 @@ with tab3:
             ph = ",".join("?"*len(tags))
             cursor.execute(f"DELETE FROM defects WHERE Tag IN ({ph})", tags)
             conn.commit()
+            # Reload updated df after deletion
+            st.session_state["df"] = pd.read_sql_query("SELECT * FROM defects", conn)
+            st.session_state["df"]["Date"] = pd.to_datetime(st.session_state["df"]["Date"], errors="coerce")
             st.success(f"Deleted: {', '.join(tags)}")
-            st.rerun()
+            st.experimental_rerun()
         else:
             st.warning("No tags entered.")
 
     if df.empty:
         st.info("No data available.")
     else:
-        # prepare display table
         all_df = (
             df.sort_values("Date", ascending=False)
               .loc[:, ["Tag", "Date", "Quantity", "Scratch_Type", "Glass_Type"]]
@@ -241,39 +240,29 @@ with tab3:
               })
         )
         all_df["Date"] = all_df["Date"].dt.strftime("%Y-%m-%d")
-         # ◀── make Sr. No start at 1  ──▶
-        all_df = all_df.reset_index(drop=True)   # make index 0,1,2…
-        all_df.index = all_df.index + 1          # shift to 1,2,3…
-        all_df.index.name = "Sr. No"             # optional: label that column
+        all_df = all_df.reset_index(drop=True)
+        all_df.index = all_df.index + 1
+        all_df.index.name = "Sr. No"
         
         st.dataframe(all_df, use_container_width=True, height=350)
 
-        
         sel = st.selectbox("Select Tag# to download its image", all_df["Tag#"])
-        # pull the raw bytes back out of your DataFrame
         row = df[df["Tag"] == sel].iloc[0]
         img_bytes = row.get("ImageData")
 
         if isinstance(img_bytes, (bytes, bytearray)):
-            # small preview
             st.image(img_bytes, width=100, caption="📷 Preview")
-            # download button
             date_val = pd.to_datetime(row["Date"], errors="coerce")
-            if pd.isna(date_val):
-                date_str = "unknown"
-            else:
-                date_str = date_val.strftime("%Y-%m-%d")
+            date_str = date_val.strftime("%Y-%m-%d") if not pd.isna(date_val) else "unknown"
             st.download_button(
                 "⬇️ Download Image",
                 data=img_bytes,
                 file_name=f"{sel}_{date_str}.jpg",
                 mime="image/jpeg",
-           )
+            )
         else:
             st.info("No image for this record.")
 
-
-        # Excel export
         buf = io.BytesIO()
         df.to_excel(buf, index=False)
         buf.seek(0)
@@ -285,4 +274,3 @@ with tab3:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True
         )
-# ╭────────────────────────── END ──────────────────────────╮
