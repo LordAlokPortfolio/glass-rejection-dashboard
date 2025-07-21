@@ -160,25 +160,17 @@ with tab2:
             po_clean = po.strip() or None
             chosen_date = date_val.strftime("%Y-%m-%d")
 
-            # ── Image → hex storage ───────────────────
+            # ── Read raw image bytes and store in DB ───────────────────
             if up_img:
+                # enforce 2 MB max
                 max_mb = 2
                 up_img.seek(0, os.SEEK_END)
-                if up_img.tell()/(1024*1024) > max_mb:
-                    st.error(f"Image exceeds {max_mb} MB.")
+                if up_img.tell() > 2 * 1024 * 1024:
+                    st.error("Image exceeds 2 MB.")
                     st.stop()
                 up_img.seek(0)
-                hex_str = up_img.read().hex()
-                safe_tag = tag.replace(" ", "_")
-                hex_name = f"{safe_tag}_{chosen_date}.hex"
-                p = IMG_DIR/hex_name
-                ctr = 1
-                while p.exists():
-                    p = IMG_DIR/f"{safe_tag}_{chosen_date}_{ctr}.hex"
-                    ctr += 1
-                p.write_text(hex_str)
-                # read the uploaded image bytes (or leave None)
-            img_bytes = up_img.read() if up_img else None
+                img_bytes = up_img.read()
+                
             cursor.execute("""
                 INSERT INTO defects
                 (PO, Tag, Size, Quantity, Scratch_Location, Scratch_Type,
@@ -225,24 +217,26 @@ with tab3:
         all_df["Date"] = all_df["Date"].dt.strftime("%Y-%m-%d")
         st.dataframe(all_df, use_container_width=True, height=350)
 
-        # let user pick a record to pull its image
+        
         sel = st.selectbox("Select Tag# to download its image", all_df["Tag#"])
+        # pull the raw bytes back out of your DataFrame
         row = df[df["Tag"] == sel].iloc[0]
+        img_bytes = row.get("ImageData")
 
-        img_bytes = row["ImageData"]
-        if img_bytes:
-            # preview
-            st.image(img_bytes, width=150, caption="📷 Preview")
+        if isinstance(img_bytes, (bytes, bytearray)):
+            # small preview
+            st.image(img_bytes, width=100, caption="📷 Preview")
             # download button
-            date_str = pd.to_datetime(row["Date"]).strftime("%Y-%m-%d")
+            date_str = pd.to_datetime(row["Date"], errors="coerce").strftime("%Y-%m-%d")
             st.download_button(
                 "⬇️ Download Image",
                 data=img_bytes,
                 file_name=f"{sel}_{date_str}.jpg",
                 mime="image/jpeg",
-            )
+           )
         else:
             st.info("No image for this record.")
+
 
         # Excel export
         buf = io.BytesIO()
