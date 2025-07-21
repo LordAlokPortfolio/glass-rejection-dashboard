@@ -20,6 +20,10 @@ if not os.path.exists(DB_PATH):
 # ── DB connection ──────────────────────────────────────────
 conn = sqlite3.connect(DB_PATH, check_same_thread=False)
 cursor = conn.cursor()
+def load_data():
+    df = pd.read_sql_query("SELECT * FROM defects", conn)
+    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+    return df
 
 #── CLEANUP any leftover test records (optional) ────────────
 cursor.execute("DELETE FROM defects WHERE Tag LIKE '%test%'")
@@ -185,18 +189,16 @@ with tab2:
                   gtype, rtype, vendor, chosen_date, note.strip(), img_bytes))
             conn.commit()
 
-            # Update session_state df so all tabs show latest data
-            st.session_state["df"] = pd.read_sql_query("SELECT * FROM defects", conn)
-            st.session_state["df"]["Date"] = pd.to_datetime(st.session_state["df"]["Date"], errors="coerce")
+            # Reload df and save to session state after insert
+            st.session_state["df"] = load_data()
 
             st.success("✅ Submitted!")
             st.toast("Record saved!", icon="💾")
-            st.rerun()  # updated rerun call
-            
+            st.rerun()
 
 # ╭────────────────────────── TAB 3 – Data Table ────────────╮
 with tab3:
-    df = st.session_state["df"]  # Always use updated df from session state
+    df = st.session_state["df"]  # Use latest df from session state
 
     m1, m2, m3 = st.columns(3)
     m1.metric("Total Records", len(df))
@@ -218,11 +220,11 @@ with tab3:
             ph = ",".join("?"*len(tags))
             cursor.execute(f"DELETE FROM defects WHERE Tag IN ({ph})", tags)
             conn.commit()
-            # Reload updated df after deletion
-            st.session_state["df"] = pd.read_sql_query("SELECT * FROM defects", conn)
-            st.session_state["df"]["Date"] = pd.to_datetime(st.session_state["df"]["Date"], errors="coerce")
+
+            # Reload df after delete
+            st.session_state["df"] = load_data()
             st.success(f"Deleted: {', '.join(tags)}")
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.warning("No tags entered.")
 
@@ -263,8 +265,12 @@ with tab3:
         else:
             st.info("No image for this record.")
 
+        # Excel export with proper date formatting
+        export_df = df.copy()
+        export_df["Date"] = export_df["Date"].dt.strftime("%Y-%m-%d")
+
         buf = io.BytesIO()
-        df.to_excel(buf, index=False)
+        export_df.to_excel(buf, index=False)
         buf.seek(0)
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         st.download_button(
