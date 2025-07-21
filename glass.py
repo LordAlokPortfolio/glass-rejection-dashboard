@@ -232,7 +232,13 @@ with tab3:
 
         sel = st.selectbox("Select Tag# to download its image", all_df["Tag#"])
         row = df[df["Tag"]==sel].iloc[0]
-        ds = pd.to_datetime(row["Date"], errors="coerce").strftime("%Y-%m-%d")
+        # handle NaT safely
+        date_val = row["Date"]
+        if pd.isna(date_val):
+            ds = "unknown"
+        else:
+            ds = date_val.strftime("%Y-%m-%d")
+
         hx = IMG_DIR / f"{sel.replace(' ','_')}_{ds}.hex"
 
         if hx.exists():
