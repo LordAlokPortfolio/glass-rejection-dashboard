@@ -30,7 +30,7 @@ os.makedirs(IMG_DIR, exist_ok=True)
 conn   = sqlite3.connect(DB_PATH, check_same_thread=False)
 cursor = conn.cursor()
 # ── CLEANUP any leftover test records ───────────────────────
-cursor.execute("DELETE FROM defects WHERE Tag LIKE '%test %'")
+cursor.execute("DELETE FROM defects WHERE Tag LIKE '%test%'")
 conn.commit()
 
 df     = pd.read_sql_query("SELECT * FROM defects", conn)
@@ -305,40 +305,40 @@ with tab3:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True
         )
+    # ╭────────────────────── Today’s Scratch Summary ──────────╮
+    st.markdown("### 📋 Today’s Scratch Summary")
 
-# ── Today’s Scratch Summary ─────────────────────────────────
-st.markdown("### 📋 Today’s Scratch Summary")
+    if st.button("Generate Table", key="todays_summary"):
+        # ensure Date is datetime
+        df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+        today_df = df[df["Date"].dt.date == date.today()]
 
-if st.button("Generate Table", key="todays_summary"):
-    # parse dates & filter
-    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
-    today_df = df[df["Date"].dt.date == date.today()]
-
-    if today_df.empty:
-        st.warning("No records logged today.")
-    else:
-        # build table
-        display_df = (
-            today_df[["Tag", "Date", "Quantity"]]
-            .rename(columns={"Tag":"Tag#", "Quantity":"QTY"})
-        )
-        display_df["Date"] = display_df["Date"].dt.strftime("%Y-%m-%d")
-        st.dataframe(display_df, use_container_width=True, height=300)
-
-        # optional: download an image
-        sel = st.selectbox("Select Tag# to download its image", display_df["Tag#"])
-        row = today_df[today_df["Tag"] == sel].iloc[0]
-        date_str = row["Date"].strftime("%Y-%m-%d")
-        hex_path = IMG_DIR / f"{sel.replace(' ','_')}_{date_str}.hex"
-
-        if hex_path.exists():
-            with open(hex_path, "r") as f:
-                img_bytes = bytes.fromhex(f.read())
-            st.download_button(
-                "⬇️ Download Image",
-                data=img_bytes,
-                file_name=f"{sel}_{date_str}.jpg",
-                mime="image/jpeg"
-            )
+        if today_df.empty:
+            st.warning("No records logged today.")
         else:
-            st.info("No image uploaded for this record.")
+            # build and display the table
+            display_df = (
+                today_df[["Tag", "Date", "Quantity"]]
+                .rename(columns={"Tag": "Tag#", "Quantity": "QTY"})
+            )
+            display_df["Date"] = display_df["Date"].dt.strftime("%Y-%m-%d")
+            st.dataframe(display_df, use_container_width=True, height=300)
+
+            # optional: download an image for one selected row
+            sel = st.selectbox("Select Tag# to download its image", display_df["Tag#"])
+            row = today_df[today_df["Tag"] == sel].iloc[0]
+            date_str = row["Date"].strftime("%Y-%m-%d")
+            hex_path = IMG_DIR / f"{sel.replace(' ', '_')}_{date_str}.hex"
+
+            if hex_path.exists():
+                with open(hex_path, "r") as f:
+                    img_bytes = bytes.fromhex(f.read())
+                st.download_button(
+                    "⬇️ Download Image",
+                    data=img_bytes,
+                    file_name=f"{sel}_{date_str}.jpg",
+                    mime="image/jpeg"
+                )
+            else:
+                st.info("No image uploaded for this record.")
+
