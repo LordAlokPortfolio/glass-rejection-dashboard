@@ -31,8 +31,8 @@ conn   = sqlite3.connect(DB_PATH, check_same_thread=False)
 cursor = conn.cursor()
 
 #── CLEANUP any leftover test records (optional) ────────────
-cursor.execute("DELETE FROM defects WHERE Tag LIKE '%test%'")
-conn.commit()
+#cursor.execute("DELETE FROM defects WHERE Tag LIKE '%test%'")
+#conn.commit()
 
 df     = pd.read_sql_query("SELECT * FROM defects", conn)
 df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
