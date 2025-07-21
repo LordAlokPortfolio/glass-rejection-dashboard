@@ -160,6 +160,7 @@ with tab2:
             po_clean = po.strip() or None
             chosen_date = date_val.strftime("%Y-%m-%d")
 
+            img_bytes = None  # <--- always define before the if
             # ── Read raw image bytes and store in DB ───────────────────
             if up_img:
                 # enforce 2 MB max
@@ -170,7 +171,9 @@ with tab2:
                     st.stop()
                 up_img.seek(0)
                 img_bytes = up_img.read()
-                
+            # DEBUG: print to Streamlit for troubleshooting
+            st.write(f"Will insert record with date: {chosen_date}")   
+
             cursor.execute("""
                 INSERT INTO defects
                 (PO, Tag, Size, Quantity, Scratch_Location, Scratch_Type,
@@ -200,6 +203,19 @@ with tab3:
         m3.metric("Top Glass Type", "N/A")
 
     st.title("📄 All Scratch Records")
+    with st.expander("🔒 Admin: Delete rows by Tag#"):
+        tags_in = st.text_input("Tag#s to delete (comma-separated)")
+    if st.button("🚨 Delete Selected"):
+        tags = [t.strip() for t in tags_in.split(",") if t.strip()]
+        if tags:
+            ph = ",".join("?"*len(tags))
+            cursor.execute(f"DELETE FROM defects WHERE Tag IN ({ph})", tags)
+            conn.commit()
+            st.success(f"Deleted: {', '.join(tags)}")
+            st.rerun()
+        else:
+            st.warning("No tags entered.")
+
     if df.empty:
         st.info("No data available.")
     else:
