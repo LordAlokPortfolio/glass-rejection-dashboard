@@ -29,7 +29,6 @@ os.makedirs(IMG_DIR, exist_ok=True)
 # ── DB connection & dataframe ──────────────────────────────
 conn   = sqlite3.connect(DB_PATH, check_same_thread=False)
 cursor = conn.cursor()
-st.write(list(cursor.execute("PRAGMA table_info(defects)")))
 
 #── CLEANUP any leftover test records (optional) ────────────
 cursor.execute("DELETE FROM defects WHERE Tag LIKE '%test%'")
@@ -159,36 +158,42 @@ with tab2:
     if submit_btn:
         if not tag:
             st.error("Tag# is required.")
-        else:
-            po_clean = po.strip() or None
-            chosen_date = date_val.strftime("%Y-%m-%d")
+    else:
+        po_clean = po.strip() or None
+        chosen_date = date_val.strftime("%Y-%m-%d")
 
-            img_bytes = None  # <--- always define before the if
-            # ── Read raw image bytes and store in DB ───────────────────
-            if up_img:
-                # enforce 2 MB max
-                max_mb = 2
-                up_img.seek(0, os.SEEK_END)
-                if up_img.tell() > 2 * 1024 * 1024:
-                    st.error("Image exceeds 2 MB.")
-                    st.stop()
-                up_img.seek(0)
-                img_bytes = up_img.read()
-            # DEBUG: print to Streamlit for troubleshooting
-            st.write(f"Will insert record with date: {chosen_date}")   
+        img_bytes = None  # <--- always define before the if
+        if up_img:
+            # enforce 2 MB max
+            max_mb = 2
+            up_img.seek(0, os.SEEK_END)
+            if up_img.tell() > 2 * 1024 * 1024:
+                st.error("Image exceeds 2 MB.")
+                st.stop()
+            up_img.seek(0)
+            img_bytes = up_img.read()
 
-            cursor.execute("""
-                INSERT INTO defects
-                (PO, Tag, Size, Quantity, Scratch_Location, Scratch_Type,
-                 Glass_Type, Rack_Type, Vendor, Date, Note, ImageData)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (po_clean, tag.strip(), size.strip(), qty, loc, stype,
-                  gtype, rtype, vendor, chosen_date, note.strip(),img_bytes))
-            conn.commit()
+        # <<< DEBUG LINES HERE >>>
+        st.write("Will insert record with date:", chosen_date)
+        st.write("Insert values:", (po_clean, tag.strip(), size.strip(), qty, loc, stype,
+                                   gtype, rtype, vendor, chosen_date, note.strip(), img_bytes))
+        # <<< END DEBUG LINES >>>
 
-            st.success("✅ Submitted!")
-            st.toast("Record saved!", icon="💾")
-            st.rerun()
+        cursor.execute("""
+            INSERT INTO defects
+            (PO, Tag, Size, Quantity, Scratch_Location, Scratch_Type,
+            Glass_Type, Rack_Type, Vendor, Date, Note, ImageData)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (po_clean, tag.strip(), size.strip(), qty, loc, stype,
+              gtype, rtype, vendor, chosen_date, note.strip(), img_bytes))
+        conn.commit()
+
+        st.write(pd.read_sql_query("SELECT * FROM defects ORDER BY ROWID DESC LIMIT 1", conn))
+
+        st.success("✅ Submitted!")
+        st.toast("Record saved!", icon="💾")
+        st.rerun()
+
 
 
 #╭────────────────────────── TAB 3 – Data Table ────────────╮
