@@ -232,7 +232,11 @@ with tab3:
             # small preview
             st.image(img_bytes, width=100, caption="📷 Preview")
             # download button
-            date_str = pd.to_datetime(row["Date"], errors="coerce").strftime("%Y-%m-%d")
+            date_val = pd.to_datetime(row["Date"], errors="coerce")
+            if pd.isna(date_val):
+                date_str = "unknown"
+            else:
+                date_str = date_val.strftime("%Y-%m-%d")
             st.download_button(
                 "⬇️ Download Image",
                 data=img_bytes,
