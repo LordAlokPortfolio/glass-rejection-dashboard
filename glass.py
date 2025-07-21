@@ -158,13 +158,14 @@ with tab2:
     if submit_btn:
         if not tag:
             st.error("Tag# is required.")
+    elif not date_val:
+        st.error("Date is required.")
     else:
         po_clean = po.strip() or None
         chosen_date = date_val.strftime("%Y-%m-%d")
 
-        img_bytes = None  # <--- always define before the if
+        img_bytes = None
         if up_img:
-            # enforce 2 MB max
             max_mb = 2
             up_img.seek(0, os.SEEK_END)
             if up_img.tell() > 2 * 1024 * 1024:
@@ -172,12 +173,6 @@ with tab2:
                 st.stop()
             up_img.seek(0)
             img_bytes = up_img.read()
-
-        # <<< DEBUG LINES HERE >>>
-        st.write("Will insert record with date:", chosen_date)
-        st.write("Insert values:", (po_clean, tag.strip(), size.strip(), qty, loc, stype,
-                                   gtype, rtype, vendor, chosen_date, note.strip(), img_bytes))
-        # <<< END DEBUG LINES >>>
 
         cursor.execute("""
             INSERT INTO defects
@@ -188,11 +183,10 @@ with tab2:
               gtype, rtype, vendor, chosen_date, note.strip(), img_bytes))
         conn.commit()
 
-        st.write(pd.read_sql_query("SELECT * FROM defects ORDER BY ROWID DESC LIMIT 1", conn))
-
         st.success("✅ Submitted!")
         st.toast("Record saved!", icon="💾")
-        #st.rerun()
+        st.rerun()
+
 
 
 
