@@ -149,7 +149,7 @@ with tab2:
         up_img = st.file_uploader("Upload Image (Max 2MB)", type=["jpg","jpeg","png"], key=form_keys["img"])
         # ── PREVIEW RIGHT AFTER UPLOAD ─────────────────────────
         if up_img:
-            st.image(up_img, caption="🖼️ Preview", use_couse_container_width=True)
+            st.image(up_img, caption="🖼️ Preview", use_container_width=True)
         submit_btn = st.form_submit_button("🚀 SAVE RECORD")
 
     if submit_btn:
