@@ -30,7 +30,7 @@ os.makedirs(IMG_DIR, exist_ok=True)
 conn   = sqlite3.connect(DB_PATH, check_same_thread=False)
 cursor = conn.cursor()
 
- ── CLEANUP any leftover test records (optional) ────────────
+#── CLEANUP any leftover test records (optional) ────────────
 cursor.execute("DELETE FROM defects WHERE Tag LIKE '%test%'")
 conn.commit()
 
