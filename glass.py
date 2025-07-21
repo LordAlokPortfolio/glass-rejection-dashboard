@@ -303,37 +303,33 @@ with tab3:
             use_container_width=True
         )
 
-# ╭────────────────────── Today’s Scratch Summary ──────────╮
+# # ╭────────────────────── Today’s Scratch Summary ──────────╮
 st.markdown("### 📋 Today’s Scratch Summary")
 
-if st.button("Generate Table", key="gen_today"):
+# Only show today's summary as a table
+if st.button("Generate Table", key="todays_summary"):
     if df.empty:
         st.warning("No data in DB.")
     else:
-        # ensure Date is datetime
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
         today_df = df[df["Date"].dt.date == date.today()]
 
         if today_df.empty:
             st.warning("No records logged today.")
         else:
-            # build clean table
+            # Build and display the table
             display_df = (
                 today_df[["Tag", "Date", "Quantity"]]
-                .rename(columns={"Tag":"Tag#", "Quantity":"QTY"})
+                .rename(columns={"Tag": "Tag#", "Quantity": "QTY"})
             )
-            display_df["Date"] = pd.to_datetime(display_df["Date"]).dt.strftime("%Y-%m-%d")
-
-            # show the table
+            display_df["Date"] = display_df["Date"].dt.strftime("%Y-%m-%d")
             st.dataframe(display_df, use_container_width=True, height=300)
 
-            # let user pick a row to download its image
+            # Download image for a selected record
             sel = st.selectbox("Select Tag# to download its image", display_df["Tag#"])
             row = today_df[today_df["Tag"] == sel].iloc[0]
-
-            # construct hex filename
             date_str = row["Date"].strftime("%Y-%m-%d")
-            hex_path = IMG_DIR / f"{sel.replace(' ','_')}_{date_str}.hex"
+            hex_path = IMG_DIR / f"{sel.replace(' ', '_')}_{date_str}.hex"
 
             if hex_path.exists():
                 with open(hex_path, "r") as f:
@@ -346,6 +342,3 @@ if st.button("Generate Table", key="gen_today"):
                 )
             else:
                 st.info("No image uploaded for this record.")
-
-
-        
