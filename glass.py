@@ -129,6 +129,8 @@ with tab2:
             tag  = st.text_input("Tag#", key=form_keys["tag"])
             qty  = st.number_input("Quantity", min_value=1, value=1, key=form_keys["qty"])
             date_val = st.date_input("Date", value=date.today(), key=form_keys["dval"])
+            st.write("Selected date from form:", date_val)
+
         with c2:
             loc  = st.selectbox("Location of Scratch", 
                     ["Top Left","Top Center","Top Right","Center Left","Center",
