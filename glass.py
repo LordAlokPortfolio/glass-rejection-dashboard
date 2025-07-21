@@ -192,7 +192,7 @@ with tab2:
 
         st.success("✅ Submitted!")
         st.toast("Record saved!", icon="💾")
-        st.rerun()
+        #st.rerun()
 
 
 
