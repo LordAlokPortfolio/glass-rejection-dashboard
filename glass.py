@@ -158,10 +158,10 @@ with tab2:
     if submit_btn:
         if not tag:
             st.error("Tag# is required.")
-    elif not date_val:
-        st.error("Date is required.")
-    else:
-        po_clean = po.strip() or None
+        elif not date_val:
+            st.error("Date is required.")
+        else:
+            po_clean = po.strip() or None
         chosen_date = date_val.strftime("%Y-%m-%d")
 
         img_bytes = None
