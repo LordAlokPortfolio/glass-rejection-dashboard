@@ -29,6 +29,7 @@ os.makedirs(IMG_DIR, exist_ok=True)
 # ── DB connection & dataframe ──────────────────────────────
 conn   = sqlite3.connect(DB_PATH, check_same_thread=False)
 cursor = conn.cursor()
+st.write(list(cursor.execute("PRAGMA table_info(defects)")))
 
 #── CLEANUP any leftover test records (optional) ────────────
 cursor.execute("DELETE FROM defects WHERE Tag LIKE '%test%'")
