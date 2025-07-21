@@ -163,10 +163,10 @@ with tab2:
         else:
             po_clean = po.strip() or None
         chosen_date = date_val.strftime("%Y-%m-%d")
+        st.write("Chosen date for insert:", chosen_date)    # <--- ADD THIS
 
         img_bytes = None
         if up_img:
-            max_mb = 2
             up_img.seek(0, os.SEEK_END)
             if up_img.tell() > 2 * 1024 * 1024:
                 st.error("Image exceeds 2 MB.")
@@ -174,14 +174,21 @@ with tab2:
             up_img.seek(0)
             img_bytes = up_img.read()
 
+        # <--- ADD THIS to see the values being inserted
+        st.write("Tuple for insert:", (po_clean, tag.strip(), size.strip(), qty, loc, stype,
+                                      gtype, rtype, vendor, chosen_date, note.strip(), img_bytes))
+
         cursor.execute("""
             INSERT INTO defects
             (PO, Tag, Size, Quantity, Scratch_Location, Scratch_Type,
-             Glass_Type, Rack_Type, Vendor, Date, Note, ImageData)
+            Glass_Type, Rack_Type, Vendor, Date, Note, ImageData)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (po_clean, tag.strip(), size.strip(), qty, loc, stype,
               gtype, rtype, vendor, chosen_date, note.strip(), img_bytes))
         conn.commit()
+
+        # <--- ADD THIS to show the latest DB row
+        st.write(pd.read_sql_query("SELECT * FROM defects ORDER BY ROWID DESC LIMIT 1", conn))
 
         st.success("✅ Submitted!")
         st.toast("Record saved!", icon="💾")
