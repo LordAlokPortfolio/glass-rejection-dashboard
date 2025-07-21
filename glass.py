@@ -177,14 +177,15 @@ with tab2:
                     p = IMG_DIR/f"{safe_tag}_{chosen_date}_{ctr}.hex"
                     ctr += 1
                 p.write_text(hex_str)
-
+                # read the uploaded image bytes (or leave None)
+            img_bytes = up_img.read() if up_img else None
             cursor.execute("""
                 INSERT INTO defects
                 (PO, Tag, Size, Quantity, Scratch_Location, Scratch_Type,
-                 Glass_Type, Rack_Type, Vendor, Date, Note)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 Glass_Type, Rack_Type, Vendor, Date, Note, ImageData)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (po_clean, tag.strip(), size.strip(), qty, loc, stype,
-                  gtype, rtype, vendor, chosen_date, note.strip()))
+                  gtype, rtype, vendor, chosen_date, note.strip(),img_bytes))
             conn.commit()
 
             st.success("✅ Submitted!")
@@ -192,55 +193,52 @@ with tab2:
             st.rerun()
 
 
-# ╭────────────────────────── TAB 3 – Data Table ────────────╮
+#╭────────────────────────── TAB 3 – Data Table ────────────╮
 with tab3:
-       # ── Mini Stats ───────────────────────────────────────
+    # ── Mini Stats ───────────────────────────────────────
     m1, m2, m3 = st.columns(3)
     m1.metric("Total Records", len(df))
-    m2.metric("Total Scratches", int(df["Quantity"].sum()))
-
-    # compute which Glass_Type has the highest total Quantity
+    m2.metric("Total Scratches", int(df["Quantity"].sum()) if not df.empty else 0)
+    # top glass type
     glass_sums = df.groupby("Glass_Type")["Quantity"].sum()
     if not glass_sums.empty:
         top_glass = glass_sums.idxmax()
-        top_count = int(glass_sums.max())
-        m3.metric("Top Glass Type", f"{top_glass} ({top_count})")
+        m3.metric("Top Glass Type", f"{top_glass} ({int(glass_sums.max())})")
     else:
         m3.metric("Top Glass Type", "N/A")
-    # ── Main Table ─────────────────────────────────────────
+
     st.title("📄 All Scratch Records")
-
-    # … your metrics and delete-expander here …
-
     if df.empty:
         st.info("No data available.")
     else:
-        st.markdown("### 📋 All Scratch Records Table")
+        # prepare display table
         all_df = (
             df.sort_values("Date", ascending=False)
-              .loc[:, ["Tag","Date","Quantity","Scratch_Type","Glass_Type"]]
+              .loc[:, ["Tag", "Date", "Quantity", "Scratch_Type", "Glass_Type"]]
               .rename(columns={
-                  "Tag":"Tag#","Quantity":"QTY",
-                  "Scratch_Type":"Type","Glass_Type":"Glass"
+                  "Tag": "Tag#",
+                  "Quantity": "QTY",
+                  "Scratch_Type": "Type",
+                  "Glass_Type": "Glass"
               })
         )
         all_df["Date"] = all_df["Date"].dt.strftime("%Y-%m-%d")
-        st.dataframe(all_df, use_container_width=True, height=400)
+        st.dataframe(all_df, use_container_width=True, height=350)
 
+        # let user pick a record to pull its image
         sel = st.selectbox("Select Tag# to download its image", all_df["Tag#"])
         row = df[df["Tag"] == sel].iloc[0]
 
-        # build a prefix and glob for ANY matching .hex
-        prefix = sel.replace(" ", "_")
-        matches = list(IMG_DIR.glob(f"{prefix}_*.hex"))
-
-        if matches:
-            hex_path = matches[0]
-            img_bytes = bytes.fromhex(hex_path.read_text())
+        img_bytes = row["ImageData"]
+        if img_bytes:
+            # preview
+            st.image(img_bytes, width=150, caption="📷 Preview")
+            # download button
+            date_str = pd.to_datetime(row["Date"]).strftime("%Y-%m-%d")
             st.download_button(
                 "⬇️ Download Image",
                 data=img_bytes,
-                file_name=f"{sel}.jpg",
+                file_name=f"{sel}_{date_str}.jpg",
                 mime="image/jpeg",
             )
         else:
@@ -250,13 +248,12 @@ with tab3:
         buf = io.BytesIO()
         df.to_excel(buf, index=False)
         buf.seek(0)
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         st.download_button(
             "⬇️ Download full backup (Excel)",
             data=buf,
-            file_name=f"glass_defects_backup_{stamp}.xlsx",
+            file_name=f"glass_defects_backup_{ts}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True
         )
-
 # ╭────────────────────────── END ──────────────────────────╮
