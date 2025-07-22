@@ -32,8 +32,8 @@ def load_data():
     return df
 
 #── CLEANUP any leftover test records (optional) ────────────
-cursor.execute("DELETE FROM defects WHERE Tag LIKE %s", ('%test%',))
-conn.commit()
+#cursor.execute("DELETE FROM defects WHERE Tag LIKE %s", ('%test%',))
+#conn.commit()
 
 # ── Load df into session_state (or load if not present) ────
 if "df" not in st.session_state:
