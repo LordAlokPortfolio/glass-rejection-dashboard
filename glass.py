@@ -302,15 +302,14 @@ with tab3:
         df.sort_values("Date", ascending=False)
           .loc[:, ["Size", "Tag", "Date", "Quantity", "Scratch_Type", "Glass_Type"]]
           .rename(columns={
-              "size": "Size",      # <- This will display as "Glass Size" in the UI
+              "Size": "Size",      # <- This will display as "Glass Size" in the UI
               "Tag": "Tag#",
               "Quantity": "QTY",
               "Scratch_Type": "Type",
               "Glass_Type": "Glass"
           })
-    )
-
         )
+    
         all_df["Date"] = pd.to_datetime(all_df["Date"], errors="coerce").dt.strftime("%Y-%m-%d").fillna("N/A")
         all_df = all_df.reset_index(drop=True)
         all_df.index = all_df.index + 1
