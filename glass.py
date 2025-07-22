@@ -31,9 +31,14 @@ def get_conn():
 def get_cursor():
     conn = get_conn()
     try:
-        conn.ping(reconnect=True, attempts=3, delay=2)  # keep it alive
+        # Try "ping" (preferred) — if fails, try reconnect
+        conn.ping(reconnect=True, attempts=3, delay=2)
     except Exception:
-        conn.reconnect(attempts=3, delay=2)
+        try:
+            conn.reconnect(attempts=3, delay=2)
+        except Exception as e:
+            st.error(f"Database connection failed: {e}")
+            raise
     return conn.cursor(dictionary=True), conn
 
 @st.cache_data(ttl=300)
@@ -69,8 +74,6 @@ def init_table():
     conn.commit()
     cur.close()
 
-init_table()
-
 # --- DB Status check ---
 try:
     cur, conn = get_cursor()
@@ -89,6 +92,7 @@ os.makedirs(IMG_DIR, exist_ok=True)
 
 # ---------- Load initial df ----------
 if "df" not in st.session_state:
+    init_table()  # Ensure table exists
     st.session_state["df"] = load_data_cached()
 df = st.session_state["df"]
 
