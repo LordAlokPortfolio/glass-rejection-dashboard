@@ -262,22 +262,34 @@ with tab3:
     # Delete rows
     with st.expander("🔒 Admin: Delete rows by Tag#"):
         tags_in = st.text_input("Tag#s to delete (comma-separated)")
-        if st.button("🚨 Delete Selected"):
-            tags = [t.strip() for t in tags_in.split(",") if t.strip()]
-            if tags:
-                cur, conn = get_cursor()
-                ph = ",".join(["%s"] * len(tags))
-                cur.execute(f"DELETE FROM defects WHERE Tag IN ({ph})", tags)
-                conn.commit()
-                cur.close()
+        delete_btn = st.button("🚨 Delete Selected", key="delete_btn")
+    
+    if delete_btn:
+        tags = [t.strip() for t in tags_in.split(",") if t.strip()]
+        if not tags:
+            st.warning("No tags entered.")
+        else:
+            try:
+                # Double-check tags exist
+                present_tags = df["Tag"].astype(str).tolist()
+                delete_these = [t for t in tags if t in present_tags]
+                if not delete_these:
+                    st.warning("None of those Tag#s are present in the data.")
+                else:
+                    ph = ",".join(["%s"] * len(delete_these))
+                    cursor = get_conn().cursor()
+                    cursor.execute(f"DELETE FROM defects WHERE Tag IN ({ph})", delete_these)
+                    get_conn().commit()
+                    cursor.close()
 
-                load_data_cached.clear()
-                st.session_state["df"] = load_data_cached()
+                    # Refresh data
+                    load_data_cached.clear()
+                    st.session_state["df"] = load_data_cached()
+                    st.success(f"Deleted: {', '.join(delete_these)}")
+                    st.rerun()
+            except Exception as e:
+                st.error(f"Delete failed: {e}")
 
-                st.success(f"Deleted: {', '.join(tags)}")
-                st.rerun()
-            else:
-                st.warning("No tags entered.")
 
     if df.empty:
         st.info("No data available.")
