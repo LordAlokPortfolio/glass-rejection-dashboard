@@ -1,38 +1,41 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import sqlite3, os, io, pathlib
+import mysql.connector
+import os, io, pathlib
 from datetime import datetime, date
 from PIL import Image
 from streamlit_autorefresh import st_autorefresh
 
 # ── Paths ──────────────────────────────────────────────────
 BASE_DIR = pathlib.Path(__file__).parent
-DB_PATH  = BASE_DIR / "glass_defects.db"
 IMG_DIR  = BASE_DIR / "images"
 os.makedirs(IMG_DIR, exist_ok=True)
 
-# ── DB bootstrap ───────────────────────────────────────────
-if not os.path.exists(DB_PATH):
-    from init_db import init_db
-    init_db()
+# ── MySQL DB connection ────────────────────────────────────
+conn = mysql.connector.connect(
+    host='localhost',
+    user='root',
+    password='GlassDB@alok2613',   # <--- CHANGE THIS
+    database='glass_db'
+)
+cursor = conn.cursor(dictionary=True)
 
-# ── DB connection ──────────────────────────────────────────
-conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-cursor = conn.cursor()
 def load_data():
-    df = pd.read_sql_query("SELECT * FROM defects", conn)
-    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+    cursor.execute("SELECT * FROM defects")
+    rows = cursor.fetchall()
+    df = pd.DataFrame(rows)
+    if not df.empty and "Date" in df.columns:
+        df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
     return df
 
 #── CLEANUP any leftover test records (optional) ────────────
-cursor.execute("DELETE FROM defects WHERE Tag LIKE '%test%'")
+cursor.execute("DELETE FROM defects WHERE Tag LIKE %s", ('%test%',))
 conn.commit()
 
 # ── Load df into session_state (or load if not present) ────
 if "df" not in st.session_state:
-    st.session_state["df"] = pd.read_sql_query("SELECT * FROM defects", conn)
-    st.session_state["df"]["Date"] = pd.to_datetime(st.session_state["df"]["Date"], errors="coerce")
+    st.session_state["df"] = load_data()
 
 df = st.session_state["df"]
 
@@ -185,7 +188,7 @@ with tab2:
                 INSERT INTO defects
                 (PO, Tag, Size, Quantity, Scratch_Location, Scratch_Type,
                  Glass_Type, Rack_Type, Vendor, Date, Note, ImageData)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (po_clean, tag.strip(), size.strip(), qty, loc, stype,
                   gtype, rtype, vendor, chosen_date, note.strip(), img_bytes))
             conn.commit()
@@ -218,7 +221,7 @@ with tab3:
     if st.button("🚨 Delete Selected"):
         tags = [t.strip() for t in tags_in.split(",") if t.strip()]
         if tags:
-            ph = ",".join("?"*len(tags))
+            ph = ",".join(["%s"] * len(tags))
             cursor.execute(f"DELETE FROM defects WHERE Tag IN ({ph})", tags)
             conn.commit()
 
@@ -281,3 +284,8 @@ with tab3:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True
         )
+
+# ── Close MySQL connection at end ──────────────────────────
+cursor.close()
+conn.close()
+# ── End of glass.py ────────────────────────────────────────

@@ -2,13 +2,25 @@
 glass_defects.db
 images/
 
-# ⛔ Ignore Streamlit cache
+# ⛔ Ignore Streamlit cache and secrets
 .streamlit/
+.streamlit/secrets.toml
+
+# ⛔ Ignore Python cache/bytecode
 __pycache__/
 *.pyc
+*.py[cod]
 
 # ⛔ Ignore OS & IDE files
 .DS_Store
 Thumbs.db
 .vscode/
 .env
+
+# ⛔ Ignore Python virtual environment folders
+venv/
+env/
+ENV/
+
+# ⛔ Ignore Jupyter Notebook checkpoints (if used)
+.ipynb_checkpoints/
