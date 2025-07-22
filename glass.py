@@ -15,14 +15,33 @@ os.makedirs(IMG_DIR, exist_ok=True)
 # ── Cloud SQL DB connection via Streamlit secrets ──────────
 @st.cache_resource
 def get_conn():
-    cfg = st.secrets["mysql"]
+    cfg = st.secrets["mysql"]       # must exist in Streamlit secrets
     return mysql.connector.connect(**cfg)
 
 conn = get_conn()
 cursor = conn.cursor(dictionary=True)
 
-# ── Create table if not exists ───────────────────────────────
+# (Optional safety) create table if it doesn't exist
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS defects (
+  PO VARCHAR(255),
+  Tag VARCHAR(255),
+  Size VARCHAR(255),
+  Quantity INT,
+  Scratch_Location VARCHAR(255),
+  Scratch_Type VARCHAR(255),
+  Glass_Type VARCHAR(255),
+  Rack_Type VARCHAR(255),
+  Vendor VARCHAR(255),
+  Date DATE,
+  Note TEXT,
+  ImageData LONGBLOB
+) ENGINE=InnoDB;
+""")
+conn.commit()
 
+# ── Data loader ────────────────────────────────────────────
+@st.cache_data(ttl=300)
 def load_data():
     cursor.execute("SELECT * FROM defects")
     rows = cursor.fetchall()
@@ -31,11 +50,7 @@ def load_data():
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
     return df
 
-#── CLEANUP any leftover test records (optional) ────────────
-#cursor.execute("DELETE FROM defects WHERE Tag LIKE %s", ('%test%',))
-#conn.commit()
-
-# ── Load df into session_state (or load if not present) ────
+# ── Initial df in session ──────────────────────────────────
 if "df" not in st.session_state:
     st.session_state["df"] = load_data()
 
@@ -141,7 +156,6 @@ with tab2:
             tag  = st.text_input("Tag#", key=form_keys["tag"])
             qty  = st.number_input("Quantity", min_value=1, value=1, key=form_keys["qty"])
             date_val = st.date_input("Date", value=date.today(), key=form_keys["dval"])
-            st.write("Selected date from form:", date_val)
 
         with c2:
             loc  = st.selectbox("Location of Scratch", 
@@ -173,9 +187,7 @@ with tab2:
             st.error("Date is required.")
         else:
             po_clean = po.strip() or None
-            actual_date = date_val if date_val else date.today()
-            chosen_date = actual_date.strftime("%Y-%m-%d")
-            st.write("Chosen date for insert:", chosen_date)  # debug line
+            chosen_date = date_val.strftime("%Y-%m-%d")
 
             img_bytes = None
             if up_img:
@@ -195,7 +207,8 @@ with tab2:
                   gtype, rtype, vendor, chosen_date, note.strip(), img_bytes))
             conn.commit()
 
-            # Reload df and save to session state after insert
+            # refresh cached data + session df
+            load_data.clear()
             st.session_state["df"] = load_data()
 
             st.success("✅ Submitted!")
@@ -227,8 +240,9 @@ with tab3:
             cursor.execute(f"DELETE FROM defects WHERE Tag IN ({ph})", tags)
             conn.commit()
 
-            # Reload df after delete
+            load_data.clear()
             st.session_state["df"] = load_data()
+
             st.success(f"Deleted: {', '.join(tags)}")
             st.rerun()
         else:
@@ -287,7 +301,4 @@ with tab3:
             use_container_width=True
         )
 
-# ── Close MySQL connection at end ──────────────────────────
-#cursor.close()
-#conn.close()
-# ── End of glass.py ────────────────────────────────────────
+# DO NOT close conn/cursor; Streamlit reruns this script.
