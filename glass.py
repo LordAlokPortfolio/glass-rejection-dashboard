@@ -192,7 +192,7 @@ with tab2:
             )
             stype = st.selectbox(
                 "Type of Scratch",
-                ["Scratch","Production Issue","Stain Mark","Broken","Missing"],
+                ["Scratched","Production Issue","Stain Mark","Broken","Missing"],
                 key=form_keys["stype"]
             )
             gtype = st.selectbox(
