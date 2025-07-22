@@ -19,17 +19,20 @@ def looks_like_image(b: bytes) -> bool:
 
 @st.cache_resource
 def get_conn():
-    cfg = st.secrets["mysql"]  # make sure this exists in Streamlit Secrets
-    return mysql.connector.connect(
+    cfg = st.secrets["mysql"]
+    conn = mysql.connector.connect(
         **cfg,
         connection_timeout=15,
         pool_name="glasspool",
         pool_size=5,
     )
+    return conn
 
 def get_cursor():
     conn = get_conn()
-    if not conn.is_connected():
+    try:
+        conn.ping(reconnect=True, attempts=3, delay=2)  # keep it alive
+    except Exception:
         conn.reconnect(attempts=3, delay=2)
     return conn.cursor(dictionary=True), conn
 
@@ -45,25 +48,29 @@ def load_data_cached():
     return df
 
 # ---------- One-time table create ----------
-cur, conn = get_cursor()
-cur.execute("""
-CREATE TABLE IF NOT EXISTS defects (
-  PO VARCHAR(255),
-  Tag VARCHAR(255),
-  Size VARCHAR(255),
-  Quantity INT,
-  Scratch_Location VARCHAR(255),
-  Scratch_Type VARCHAR(255),
-  Glass_Type VARCHAR(255),
-  Rack_Type VARCHAR(255),
-  Vendor VARCHAR(255),
-  Date DATE,
-  Note TEXT,
-  ImageData LONGBLOB
-) ENGINE=InnoDB;
-""")
-conn.commit()
-cur.close()
+def init_table():
+    cur, conn = get_cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS defects (
+          PO VARCHAR(255),
+          Tag VARCHAR(255),
+          Size VARCHAR(255),
+          Quantity INT,
+          Scratch_Location VARCHAR(255),
+          Scratch_Type VARCHAR(255),
+          Glass_Type VARCHAR(255),
+          Rack_Type VARCHAR(255),
+          Vendor VARCHAR(255),
+          Date DATE,
+          Note TEXT,
+          ImageData LONGBLOB
+        ) ENGINE=InnoDB;
+    """)
+    conn.commit()
+    cur.close()
+
+init_table()
+
 
 # ---------- Paths (not critical but kept) ----------
 BASE_DIR = pathlib.Path(__file__).parent
