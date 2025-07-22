@@ -168,7 +168,8 @@ with tab2:
             st.error("Date is required.")
         else:
             po_clean = po.strip() or None
-            chosen_date = date_val.strftime("%Y-%m-%d")
+            actual_date = date_val if date_val else date.today()
+            chosen_date = actual_date.strftime("%Y-%m-%d")
             st.write("Chosen date for insert:", chosen_date)  # debug line
 
             img_bytes = None
@@ -241,7 +242,7 @@ with tab3:
                   "Glass_Type": "Glass"
               })
         )
-        all_df["Date"] = all_df["Date"].dt.strftime("%Y-%m-%d")
+        all_df["Date"] = all_df["Date"].dt.strftime("%Y-%m-%d").fillna("N/A")
         all_df = all_df.reset_index(drop=True)
         all_df.index = all_df.index + 1
         all_df.index.name = "Sr. No"
