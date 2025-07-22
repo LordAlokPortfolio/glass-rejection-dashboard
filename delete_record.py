@@ -11,7 +11,7 @@ mode = input("Delete by (1) Tag# or (2) rowid? Enter 1 or 2: ").strip()
 
 if mode == "1":
     tag_input = input("Enter Tag# to delete: ").strip()
-    cursor.execute('SELECT rowid, * FROM defects WHERE "Tag#" = ?', (tag_input,))
+    cursor.execute('SELECT rowid, * FROM defects WHERE LOWER(TRIM("Tag#")) = LOWER(TRIM(?))', (tag_input,))
 elif mode == "2":
     rowid_input = input("Enter rowid to delete: ").strip()
     cursor.execute("SELECT rowid, * FROM defects WHERE rowid = ?", (rowid_input,))
@@ -34,7 +34,7 @@ for row in rows:
 confirm = input("\n🗑 Are you sure you want to delete these rows? (y/n): ").strip().lower()
 if confirm == "y":
     if mode == "1":
-        cursor.execute('DELETE FROM defects WHERE "Tag#" = ?', (tag_input,))
+        cursor.execute('DELETE FROM defects WHERE LOWER(TRIM("Tag#")) = LOWER(TRIM(?))', (tag_input,))
     else:
         cursor.execute("DELETE FROM defects WHERE rowid = ?", (rowid_input,))
     conn.commit()
