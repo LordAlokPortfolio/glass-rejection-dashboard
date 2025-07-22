@@ -7,6 +7,15 @@ from datetime import datetime, date
 from PIL import Image
 from streamlit_autorefresh import st_autorefresh
 
+# ── Streamlit config ───────────────────────────────────────
+st.set_page_config(page_title="Glass Guard", layout="wide")
+st_autorefresh(interval=300_000, key="auto_refresh")   # 5-min auto-refresh
+
+
+def looks_like_image(b: bytes) -> bool:
+    # JPEG or PNG quick check
+    return bool(b) and len(b) > 8 and (b[:2] == b"\xFF\xD8" or b[:8] == b"\x89PNG\r\n\x1a\n")
+
 # ── Paths ──────────────────────────────────────────────────
 BASE_DIR = pathlib.Path(__file__).parent
 IMG_DIR  = BASE_DIR / "images"
@@ -18,7 +27,7 @@ def get_conn():
     cfg = st.secrets["mysql"]       # must exist in Streamlit secrets
     return mysql.connector.connect(
         **cfg,
-        connection_timeout=5,    # seconds
+        connection_timeout=15,    # seconds
         pool_name="glasspool",
         pool_size=5
     )
@@ -60,10 +69,6 @@ if "df" not in st.session_state:
     st.session_state["df"] = load_data_cached()
 
 df = st.session_state["df"]
-
-# ── Streamlit config ───────────────────────────────────────
-st.set_page_config(page_title="Glass Guard", layout="wide")
-st_autorefresh(interval=300_000, key="auto_refresh")   # 5-min auto-refresh
 
 # ── Logo ───────────────────────────────────────────────────
 st.markdown("<div style='text-align:center'>", unsafe_allow_html=True)
@@ -222,13 +227,14 @@ with tab2:
 
 # ╭────────────────────────── TAB 3 – Data Table ────────────╮
 with tab3:
-    df = st.session_state["df"]  # Use latest df from session state
+    df = st.session_state["df"]  # latest df
 
+    # ── Mini stats
     m1, m2, m3 = st.columns(3)
     m1.metric("Total Records", len(df))
     m2.metric("Total Scratches", int(df["Quantity"].sum()) if not df.empty else 0)
 
-    glass_sums = df.groupby("Glass_Type")["Quantity"].sum()
+    glass_sums = df.groupby("Glass_Type")["Quantity"].sum() if not df.empty else pd.Series(dtype=int)
     if not glass_sums.empty:
         top_glass = glass_sums.idxmax()
         m3.metric("Top Glass Type", f"{top_glass} ({int(glass_sums.max())})")
@@ -236,48 +242,49 @@ with tab3:
         m3.metric("Top Glass Type", "N/A")
 
     st.title("📄 All Scratch Records")
+
+    # ── Delete rows
     with st.expander("🔒 Admin: Delete rows by Tag#"):
         tags_in = st.text_input("Tag#s to delete (comma-separated)")
-    if st.button("🚨 Delete Selected"):
-        tags = [t.strip() for t in tags_in.split(",") if t.strip()]
-        if tags:
-            ph = ",".join(["%s"] * len(tags))
-            cursor.execute(f"DELETE FROM defects WHERE Tag IN ({ph})", tags)
-            conn.commit()
+        if st.button("🚨 Delete Selected"):
+            tags = [t.strip() for t in tags_in.split(",") if t.strip()]
+            if tags:
+                ph = ",".join(["%s"] * len(tags))
+                cursor.execute(f"DELETE FROM defects WHERE Tag IN ({ph})", tags)
+                conn.commit()
 
-            load_data_cached.clear()
-            st.session_state["df"] = load_data_cached()
-
-            st.success(f"Deleted: {', '.join(tags)}")
-            st.rerun()
-        else:
-            st.warning("No tags entered.")
+                load_data_cached.clear()
+                
+                # refresh data
+                st.session_state["df"] = load_data_cached()
+                st.success(f"Deleted: {', '.join(tags)}")
+                st.rerun()
+            else:
+                st.warning("No tags entered.")
 
     if df.empty:
         st.info("No data available.")
     else:
+        # show table
         all_df = (
             df.sort_values("Date", ascending=False)
               .loc[:, ["Tag", "Date", "Quantity", "Scratch_Type", "Glass_Type"]]
-              .rename(columns={
-                  "Tag": "Tag#",
-                  "Quantity": "QTY",
-                  "Scratch_Type": "Type",
-                  "Glass_Type": "Glass"
-              })
+              .rename(columns={"Tag": "Tag#", "Quantity": "QTY",
+                               "Scratch_Type": "Type", "Glass_Type": "Glass"})
         )
-        all_df["Date"] = all_df["Date"].dt.strftime("%Y-%m-%d").fillna("N/A")
+        all_df["Date"] = pd.to_datetime(all_df["Date"], errors="coerce").dt.strftime("%Y-%m-%d").fillna("N/A")
         all_df = all_df.reset_index(drop=True)
         all_df.index = all_df.index + 1
         all_df.index.name = "Sr. No"
-        
+
         st.dataframe(all_df, use_container_width=True, height=350)
 
+        # image preview / download
         sel = st.selectbox("Select Tag# to download its image", all_df["Tag#"])
         row = df[df["Tag"] == sel].iloc[0]
         img_bytes = row.get("ImageData")
 
-        if isinstance(img_bytes, (bytes, bytearray)):
+        if isinstance(img_bytes, (bytes, bytearray)) and looks_like_image(img_bytes):
             st.image(img_bytes, width=100, caption="📷 Preview")
             date_val = pd.to_datetime(row["Date"], errors="coerce")
             date_str = date_val.strftime("%Y-%m-%d") if not pd.isna(date_val) else "unknown"
@@ -285,15 +292,14 @@ with tab3:
                 "⬇️ Download Image",
                 data=img_bytes,
                 file_name=f"{sel}_{date_str}.jpg",
-                mime="image/jpeg",
+                mime="image/jpeg"
             )
         else:
-            st.info("No image for this record.")
+            st.info("No valid image for this record.")
 
-        # Excel export with proper date formatting
+        # Excel export
         export_df = df.copy()
-        export_df["Date"] = export_df["Date"].dt.strftime("%Y-%m-%d")
-
+        export_df["Date"] = pd.to_datetime(export_df["Date"], errors="coerce").dt.strftime("%Y-%m-%d")
         buf = io.BytesIO()
         export_df.to_excel(buf, index=False)
         buf.seek(0)
@@ -305,5 +311,3 @@ with tab3:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True
         )
-
-# DO NOT close conn/cursor; Streamlit reruns this script.
