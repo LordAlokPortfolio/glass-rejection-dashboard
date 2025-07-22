@@ -71,6 +71,15 @@ def init_table():
 
 init_table()
 
+# --- DB Status check ---
+try:
+    cur, conn = get_cursor()
+    cur.execute("SELECT 1")
+    cur.close()
+    st.success("✅ Database: Connected")
+except Exception as e:
+    st.error(f"❌ Database: Not connected\n\n{e}")
+
 
 # ---------- Paths (not critical but kept) ----------
 BASE_DIR = pathlib.Path(__file__).parent
