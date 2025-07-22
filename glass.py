@@ -75,6 +75,7 @@ init_table()
 try:
     cur, conn = get_cursor()
     cur.execute("SELECT 1")
+    _ = cur.fetchall()    # <-- THIS fetches any result, clears buffer!
     cur.close()
     st.success("✅ Database: Connected")
 except Exception as e:
