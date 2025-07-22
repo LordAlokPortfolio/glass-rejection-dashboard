@@ -3,4 +3,5 @@ mysql-connector-python
 pandas
 plotly
 streamlit-autorefresh
+pillow>=10
 openpyxl
