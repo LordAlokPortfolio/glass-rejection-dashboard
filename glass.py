@@ -16,7 +16,12 @@ os.makedirs(IMG_DIR, exist_ok=True)
 @st.cache_resource
 def get_conn():
     cfg = st.secrets["mysql"]       # must exist in Streamlit secrets
-    return mysql.connector.connect(**cfg)
+    return mysql.connector.connect(
+        **cfg,
+        connection_timeout=5,    # seconds
+        pool_name="glasspool",
+        pool_size=5
+    )
 
 conn = get_conn()
 cursor = conn.cursor(dictionary=True)
@@ -42,7 +47,7 @@ conn.commit()
 
 # ── Data loader ────────────────────────────────────────────
 @st.cache_data(ttl=300)
-def load_data():
+def load_data_cached():
     cursor.execute("SELECT * FROM defects")
     rows = cursor.fetchall()
     df = pd.DataFrame(rows)
@@ -52,7 +57,7 @@ def load_data():
 
 # ── Initial df in session ──────────────────────────────────
 if "df" not in st.session_state:
-    st.session_state["df"] = load_data()
+    st.session_state["df"] = load_data_cached()
 
 df = st.session_state["df"]
 
@@ -208,8 +213,8 @@ with tab2:
             conn.commit()
 
             # refresh cached data + session df
-            load_data.clear()
-            st.session_state["df"] = load_data()
+            load_data_cached.clear()
+            st.session_state["df"] = load_data_cached()
 
             st.success("✅ Submitted!")
             st.toast("Record saved!", icon="💾")
@@ -240,8 +245,8 @@ with tab3:
             cursor.execute(f"DELETE FROM defects WHERE Tag IN ({ph})", tags)
             conn.commit()
 
-            load_data.clear()
-            st.session_state["df"] = load_data()
+            load_data_cached.clear()
+            st.session_state["df"] = load_data_cached()
 
             st.success(f"Deleted: {', '.join(tags)}")
             st.rerun()

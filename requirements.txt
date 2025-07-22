@@ -2,6 +2,5 @@ streamlit
 mysql-connector-python
 pandas
 plotly
-pillow
 streamlit-autorefresh
 openpyxl
