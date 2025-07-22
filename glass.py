@@ -12,14 +12,16 @@ BASE_DIR = pathlib.Path(__file__).parent
 IMG_DIR  = BASE_DIR / "images"
 os.makedirs(IMG_DIR, exist_ok=True)
 
-# ── MySQL DB connection ────────────────────────────────────
-conn = mysql.connector.connect(
-    host='localhost',
-    user='root',
-    password='GlassDB@alok2613',   # <--- CHANGE THIS
-    database='glass_db'
-)
+# ── Cloud SQL DB connection via Streamlit secrets ──────────
+@st.cache_resource
+def get_conn():
+    cfg = st.secrets["mysql"]
+    return mysql.connector.connect(**cfg)
+
+conn = get_conn()
 cursor = conn.cursor(dictionary=True)
+
+# ── Create table if not exists ───────────────────────────────
 
 def load_data():
     cursor.execute("SELECT * FROM defects")
@@ -286,6 +288,6 @@ with tab3:
         )
 
 # ── Close MySQL connection at end ──────────────────────────
-cursor.close()
-conn.close()
+#cursor.close()
+#conn.close()
 # ── End of glass.py ────────────────────────────────────────
