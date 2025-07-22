@@ -1,42 +1,52 @@
-import streamlit as st
-import pandas as pd
-import plotly.express as px
-import mysql.connector
 import os, io, pathlib
 from datetime import datetime, date
+
+import mysql.connector
+import pandas as pd
+import plotly.express as px
+import streamlit as st
 from PIL import Image
 from streamlit_autorefresh import st_autorefresh
 
-# ── Streamlit config ───────────────────────────────────────
+# ---------- Streamlit basic setup ----------
 st.set_page_config(page_title="Glass Guard", layout="wide")
-st_autorefresh(interval=300_000, key="auto_refresh")   # 5-min auto-refresh
+st_autorefresh(interval=300_000, key="auto_refresh")   # 5‑min auto refresh
 
-
+# ---------- Helpers ----------
 def looks_like_image(b: bytes) -> bool:
-    # JPEG or PNG quick check
+    # quick sniff for JPG/PNG
     return bool(b) and len(b) > 8 and (b[:2] == b"\xFF\xD8" or b[:8] == b"\x89PNG\r\n\x1a\n")
 
-# ── Paths ──────────────────────────────────────────────────
-BASE_DIR = pathlib.Path(__file__).parent
-IMG_DIR  = BASE_DIR / "images"
-os.makedirs(IMG_DIR, exist_ok=True)
-
-# ── Cloud SQL DB connection via Streamlit secrets ──────────
 @st.cache_resource
 def get_conn():
-    cfg = st.secrets["mysql"]       # must exist in Streamlit secrets
+    cfg = st.secrets["mysql"]  # make sure this exists in Streamlit Secrets
     return mysql.connector.connect(
         **cfg,
-        connection_timeout=15,    # seconds
+        connection_timeout=15,
         pool_name="glasspool",
-        pool_size=5
+        pool_size=5,
     )
 
-conn = get_conn()
-cursor = conn.cursor(dictionary=True)
+def get_cursor():
+    conn = get_conn()
+    if not conn.is_connected():
+        conn.reconnect(attempts=3, delay=2)
+    return conn.cursor(dictionary=True), conn
 
-# (Optional safety) create table if it doesn't exist
-cursor.execute("""
+@st.cache_data(ttl=300)
+def load_data_cached():
+    cur, _ = get_cursor()
+    cur.execute("SELECT * FROM defects")
+    rows = cur.fetchall()
+    cur.close()
+    df = pd.DataFrame(rows)
+    if not df.empty and "Date" in df.columns:
+        df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+    return df
+
+# ---------- One-time table create ----------
+cur, conn = get_cursor()
+cur.execute("""
 CREATE TABLE IF NOT EXISTS defects (
   PO VARCHAR(255),
   Tag VARCHAR(255),
@@ -53,32 +63,27 @@ CREATE TABLE IF NOT EXISTS defects (
 ) ENGINE=InnoDB;
 """)
 conn.commit()
+cur.close()
 
-# ── Data loader ────────────────────────────────────────────
-@st.cache_data(ttl=300)
-def load_data_cached():
-    cursor.execute("SELECT * FROM defects")
-    rows = cursor.fetchall()
-    df = pd.DataFrame(rows)
-    if not df.empty and "Date" in df.columns:
-        df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
-    return df
+# ---------- Paths (not critical but kept) ----------
+BASE_DIR = pathlib.Path(__file__).parent
+IMG_DIR = BASE_DIR / "images"
+os.makedirs(IMG_DIR, exist_ok=True)
 
-# ── Initial df in session ──────────────────────────────────
+# ---------- Load initial df ----------
 if "df" not in st.session_state:
     st.session_state["df"] = load_data_cached()
-
 df = st.session_state["df"]
 
-# ── Logo ───────────────────────────────────────────────────
+# ---------- UI: Logo ----------
 st.markdown("<div style='text-align:center'>", unsafe_allow_html=True)
 st.image("KV-Logo-1.png", width=150)
 st.markdown("</div>", unsafe_allow_html=True)
 
-# ── Tabs ───────────────────────────────────────────────────
+# ---------- Tabs ----------
 tab1, tab2, tab3 = st.tabs(["📊 Dashboard", "📝 Data Entry", "📄 Data Table"])
 
-# ╭────────────────────────── TAB 1 – Dashboard ────────────╮
+# ===== TAB 1: Dashboard =====
 with tab1:
     st.title("📊 GlassGuard – Glass Defect Summary Dashboard")
     st.caption("Track. Analyze. Improve.")
@@ -86,68 +91,57 @@ with tab1:
     if df.empty:
         st.warning("⚠️ No data yet – add a record in “📝 Data Entry”.")
     else:
-        df["Year"]  = df["Date"].dt.year
+        df["Year"] = df["Date"].dt.year
         df["Week#"] = df["Date"].dt.isocalendar().week
 
         sel_year = st.radio("Choose Year", sorted(df["Year"].unique()), horizontal=True)
-        dfy      = df[df["Year"] == sel_year]
+        dfy = df[df["Year"] == sel_year]
 
         st.markdown("### 🧾 FACTS – Core Defect Types Overview")
         facts_only = ["Scratched", "Production Issue", "Stain Mark", "Broken", "Missing"]
-        facts_df   = dfy[dfy["Scratch_Type"].isin(facts_only)]
+        facts_df = dfy[dfy["Scratch_Type"].isin(facts_only)]
         facts_summary = (
-            facts_df.groupby("Scratch_Type")["Quantity"]
-            .sum()
-            .reset_index()
-            .sort_values("Quantity", ascending=False)
+            facts_df.groupby("Scratch_Type")["Quantity"].sum().reset_index().sort_values("Quantity", ascending=False)
         )
         st.plotly_chart(
-            px.bar(facts_summary, x="Scratch_Type", y="Quantity",
-                   color="Scratch_Type", title="FACTS: Defect Volume"),
+            px.bar(facts_summary, x="Scratch_Type", y="Quantity", color="Scratch_Type", title="FACTS: Defect Volume"),
             use_container_width=True
         )
 
         st.markdown("### 🔍 Breakdown by Glass Type for Selected Scratch Type")
         available = dfy["Scratch_Type"].unique().tolist()
-        sel_type  = st.radio("Select Scratch Type", available, horizontal=True)
+        sel_type = st.radio("Select Scratch Type", available, horizontal=True)
         sub_df = dfy[dfy["Scratch_Type"] == sel_type]
         if sub_df.empty:
             st.info(f"No '{sel_type}' records for {sel_year}.")
         else:
             glass_summary = (
-                sub_df.groupby("Glass_Type")["Quantity"]
-                .sum()
-                .reset_index()
-                .sort_values("Quantity", ascending=False)
+                sub_df.groupby("Glass_Type")["Quantity"].sum().reset_index().sort_values("Quantity", ascending=False)
             )
             st.dataframe(glass_summary, use_container_width=True, hide_index=True)
             st.plotly_chart(
-                px.bar(glass_summary, x="Glass_Type", y="Quantity",
-                       color="Glass_Type", title=f"{sel_type} – by Glass Type"),
+                px.bar(glass_summary, x="Glass_Type", y="Quantity", color="Glass_Type",
+                       title=f"{sel_type} – by Glass Type"),
                 use_container_width=True
             )
 
         st.markdown("### 📅 Weekly Rejections")
         weekly = dfy.groupby("Week#")["Quantity"].sum().reset_index()
-        st.plotly_chart(px.line(weekly, x="Week#", y="Quantity", markers=True),
-                        use_container_width=True)
+        st.plotly_chart(px.line(weekly, x="Week#", y="Quantity", markers=True), use_container_width=True)
 
         st.markdown("### 🪟 Glass Type Distribution")
         dist = dfy.groupby("Glass_Type")["Quantity"].sum().reset_index()
-        st.plotly_chart(px.bar(dist, x="Glass_Type", y="Quantity", color="Glass_Type"),
-                        use_container_width=True)
+        st.plotly_chart(px.bar(dist, x="Glass_Type", y="Quantity", color="Glass_Type"), use_container_width=True)
 
         st.markdown("### 🧺 Rack Type Breakdown")
         rack = dfy.groupby("Rack_Type")["Quantity"].sum().reset_index()
-        st.plotly_chart(px.pie(rack, names="Rack_Type", values="Quantity", hole=0.4),
-                        use_container_width=True)
+        st.plotly_chart(px.pie(rack, names="Rack_Type", values="Quantity", hole=0.4), use_container_width=True)
 
         st.markdown("### 🏭 Vendor Distribution")
         vendor = dfy.groupby("Vendor")["Quantity"].sum().reset_index()
-        st.plotly_chart(px.pie(vendor, names="Vendor", values="Quantity", hole=0.4),
-                        use_container_width=True)
+        st.plotly_chart(px.pie(vendor, names="Vendor", values="Quantity", hole=0.4), use_container_width=True)
 
-# ╭────────────────────────── TAB 2 – Data Entry ───────────╮
+# ===== TAB 2: Data Entry =====
 with tab2:
     st.title("📝 Enter New Scratch Record")
 
@@ -162,39 +156,44 @@ with tab2:
         c1, c2 = st.columns(2)
         with c1:
             size = st.text_input("Glass Size", key=form_keys["size"])
-            po   = st.text_input("PO# (optional)", key=form_keys["po"])
-            tag  = st.text_input("Tag#", key=form_keys["tag"])
-            qty  = st.number_input("Quantity", min_value=1, value=1, key=form_keys["qty"])
+            po = st.text_input("PO# (optional)", key=form_keys["po"])
+            tag = st.text_input("Tag#", key=form_keys["tag"])
+            qty = st.number_input("Quantity", min_value=1, value=1, key=form_keys["qty"])
             date_val = st.date_input("Date", value=date.today(), key=form_keys["dval"])
 
         with c2:
-            loc  = st.selectbox("Location of Scratch", 
-                    ["Top Left","Top Center","Top Right","Center Left","Center",
-                     "Center Right","Bottom Left","Bottom Center","Bottom Right",
-                     "Edge (Vertical)","Edge (Horizontal)","Full Panel","Unknown"],
-                    key=form_keys["loc"])
-            stype = st.selectbox("Type of Scratch",
-                    ["Scratch","Production Issue","Stain Mark","Broken","Missing"],
-                    key=form_keys["stype"])
-            gtype = st.selectbox("Glass Type (Coating)",
-                    ["CLEAR","LOWE 272","LOWE 180","LOWE 366","i89/IS20/SUNGUARD",
-                     "MATT","6331","GRAY","HAMMERED","LOWE SHAPE","NIAGARA/RAIN",
-                     "PINHEAD","1/2 REED","ACID ETCH"],
-                    key=form_keys["gtype"])
-            rtype  = st.selectbox("Rack Type", ["A-frame","Bungee Cart","Other"], key=form_keys["rtype"])
+            loc = st.selectbox(
+                "Location of Scratch",
+                ["Top Left","Top Center","Top Right","Center Left","Center","Center Right",
+                 "Bottom Left","Bottom Center","Bottom Right","Edge (Vertical)","Edge (Horizontal)",
+                 "Full Panel","Unknown"],
+                key=form_keys["loc"]
+            )
+            stype = st.selectbox(
+                "Type of Scratch",
+                ["Scratch","Production Issue","Stain Mark","Broken","Missing"],
+                key=form_keys["stype"]
+            )
+            gtype = st.selectbox(
+                "Glass Type (Coating)",
+                ["CLEAR","LOWE 272","LOWE 180","LOWE 366","i89/IS20/SUNGUARD",
+                 "MATT","6331","GRAY","HAMMERED","LOWE SHAPE","NIAGARA/RAIN",
+                 "PINHEAD","1/2 REED","ACID ETCH"],
+                key=form_keys["gtype"]
+            )
+            rtype = st.selectbox("Rack Type", ["A-frame","Bungee Cart","Other"], key=form_keys["rtype"])
             vendor = st.selectbox("Vendor", ["Cardinal CG","Woodbridge","Universal","Trimlite"], key=form_keys["vendor"])
-            note   = st.text_area("Notes / Extra details (optional)", key=form_keys["note"])
+            note = st.text_area("Notes / Extra details (optional)", key=form_keys["note"])
+
         up_img = st.file_uploader("Upload Image (Max 2MB)", type=["jpg","jpeg","png"], key=form_keys["img"])
         if up_img:
-            st.image(up_img, caption="🖼️ Preview", use_container_width=False, width=200)
+            st.image(up_img, caption="🖼️ Preview", width=200)
 
-        submit_btn = st.form_submit_button("🚀 SAVE RECORD")
+        submitted = st.form_submit_button("🚀 SAVE RECORD")
 
-    if submit_btn:
+    if submitted:
         if not tag:
             st.error("Tag# is required.")
-        elif not date_val:
-            st.error("Date is required.")
         else:
             po_clean = po.strip() or None
             chosen_date = date_val.strftime("%Y-%m-%d")
@@ -208,16 +207,17 @@ with tab2:
                 up_img.seek(0)
                 img_bytes = up_img.read()
 
-            cursor.execute("""
+            cur, conn = get_cursor()
+            cur.execute("""
                 INSERT INTO defects
                 (PO, Tag, Size, Quantity, Scratch_Location, Scratch_Type,
                  Glass_Type, Rack_Type, Vendor, Date, Note, ImageData)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """, (po_clean, tag.strip(), size.strip(), qty, loc, stype,
                   gtype, rtype, vendor, chosen_date, note.strip(), img_bytes))
             conn.commit()
+            cur.close()
 
-            # refresh cached data + session df
             load_data_cached.clear()
             st.session_state["df"] = load_data_cached()
 
@@ -225,11 +225,10 @@ with tab2:
             st.toast("Record saved!", icon="💾")
             st.rerun()
 
-# ╭────────────────────────── TAB 3 – Data Table ────────────╮
+# ===== TAB 3: Data Table =====
 with tab3:
-    df = st.session_state["df"]  # latest df
+    df = st.session_state["df"]
 
-    # ── Mini stats
     m1, m2, m3 = st.columns(3)
     m1.metric("Total Records", len(df))
     m2.metric("Total Scratches", int(df["Quantity"].sum()) if not df.empty else 0)
@@ -243,20 +242,21 @@ with tab3:
 
     st.title("📄 All Scratch Records")
 
-    # ── Delete rows
+    # Delete rows
     with st.expander("🔒 Admin: Delete rows by Tag#"):
         tags_in = st.text_input("Tag#s to delete (comma-separated)")
         if st.button("🚨 Delete Selected"):
             tags = [t.strip() for t in tags_in.split(",") if t.strip()]
             if tags:
+                cur, conn = get_cursor()
                 ph = ",".join(["%s"] * len(tags))
-                cursor.execute(f"DELETE FROM defects WHERE Tag IN ({ph})", tags)
+                cur.execute(f"DELETE FROM defects WHERE Tag IN ({ph})", tags)
                 conn.commit()
+                cur.close()
 
                 load_data_cached.clear()
-                
-                # refresh data
                 st.session_state["df"] = load_data_cached()
+
                 st.success(f"Deleted: {', '.join(tags)}")
                 st.rerun()
             else:
@@ -265,7 +265,6 @@ with tab3:
     if df.empty:
         st.info("No data available.")
     else:
-        # show table
         all_df = (
             df.sort_values("Date", ascending=False)
               .loc[:, ["Tag", "Date", "Quantity", "Scratch_Type", "Glass_Type"]]
@@ -279,7 +278,6 @@ with tab3:
 
         st.dataframe(all_df, use_container_width=True, height=350)
 
-        # image preview / download
         sel = st.selectbox("Select Tag# to download its image", all_df["Tag#"])
         row = df[df["Tag"] == sel].iloc[0]
         img_bytes = row.get("ImageData")
