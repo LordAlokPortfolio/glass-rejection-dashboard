@@ -169,7 +169,7 @@ with tab1:
         weekly = dfy.groupby("Week#")["Quantity"].sum().reset_index()
         st.plotly_chart(px.line(weekly, x="Week#", y="Quantity", markers=True), use_container_width=True)
 
-        st.markdown("### 🪟 Glass Type Distribution")
+        st.markdown("### 🧊 Glass Type Distribution") 
         dist = dfy.groupby("Glass_Type")["Quantity"].sum().reset_index()
         st.plotly_chart(px.bar(dist, x="Glass_Type", y="Quantity", color="Glass_Type"), use_container_width=True)
 
@@ -200,7 +200,7 @@ with tab2:
             tag = st.text_input("Tag#", key=form_keys["tag"])
             qty = st.number_input("Quantity", min_value=1, value=1, key=form_keys["qty"])
             date_val = st.date_input("Date", value=date.today(), key=form_keys["dval"])
-            custom_runs = st.number_input("Custom Runs (today)", min_value=0, value=0)
+            
 
         with c2:
             loc = st.selectbox(
@@ -252,10 +252,10 @@ with tab2:
             cur.execute("""
                 INSERT INTO defects
                 (PO, Tag, Size, Quantity, Scratch_Location, Scratch_Type,
-                 Glass_Type, Rack_Type, Vendor, Date, Note, ImageData, Custom_Runs)
+                 Glass_Type, Rack_Type, Vendor, Date, Note, ImageData)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """, (po_clean, tag.strip(), size.strip(), qty, loc, stype,
-                  gtype, rtype, vendor, chosen_date, note.strip(), img_bytes, custom_runs))
+                  gtype, rtype, vendor, chosen_date, note.strip(), img_bytes))
             conn.commit()
             cur.close()
 
