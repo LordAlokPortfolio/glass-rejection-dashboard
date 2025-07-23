@@ -202,7 +202,7 @@ with tab2:
                  "PINHEAD","1/2 REED","ACID ETCH"],
                 key=form_keys["gtype"]
             )
-            rtype = st.selectbox("Rack Type", ["A-frame","Bungee Cart","Other"], key=form_keys["rtype"])
+            rtype = st.selectbox("Rack Type", ["A-frame","Bungee Cart"], key=form_keys["rtype"])
             vendor = st.selectbox("Vendor", ["Cardinal CG","Woodbridge","Universal","Trimlite"], key=form_keys["vendor"])
             note = st.text_area("Notes / Extra details (optional)", key=form_keys["note"])
 
@@ -299,15 +299,16 @@ with tab3:
         st.info("No data available.")
     else:
         all_df = (
-        df.sort_values("Date", ascending=False)
-          .loc[:, ["Size", "Tag", "Date", "Quantity", "Scratch_Type", "Glass_Type"]]
-          .rename(columns={
-              "Size": "Size",      # <- This will display as "Glass Size" in the UI
-              "Tag": "Tag#",
-              "Quantity": "QTY",
-              "Scratch_Type": "Type",
-              "Glass_Type": "Glass"
-          })
+    df.sort_values("Date", ascending=False)
+      .loc[:, ["Size", "Tag", "Date", "Quantity", "Scratch_Type", "Glass_Type", "Rack_Type"]]
+      .rename(columns={
+          "Size": "Size",
+          "Tag": "Tag#",
+          "Quantity": "QTY",
+          "Scratch_Type": "Type",
+          "Glass_Type": "Glass",
+          "Rack_Type": "Rack"
+      })
         )
     
         all_df["Date"] = pd.to_datetime(all_df["Date"], errors="coerce").dt.strftime("%Y-%m-%d").fillna("N/A")
