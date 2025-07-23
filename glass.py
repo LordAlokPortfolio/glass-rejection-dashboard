@@ -13,6 +13,25 @@ st.set_page_config(page_title="Glass Guard", layout="wide")
 st_autorefresh(interval=300_000, key="auto_refresh")   # 5‑min auto refresh
 
 # ---------- Helpers ----------
+def log_custom_runs(date_val, runs_val):
+    cur, conn = get_cursor()
+    cur.execute(
+        "INSERT INTO custom_runs (run_date, runs) VALUES (%s, %s)",
+        (date_val.strftime("%Y-%m-%d"), runs_val)
+    )
+    conn.commit()
+    cur.close()
+
+def get_monthly_custom_runs(year, month):
+    cur, _ = get_cursor()
+    cur.execute(
+        "SELECT SUM(runs) as total_runs FROM custom_runs WHERE YEAR(run_date) = %s AND MONTH(run_date) = %s",
+        (year, month)
+    )
+    res = cur.fetchone()
+    cur.close()
+    return res['total_runs'] if res and res['total_runs'] else 0
+
 def looks_like_image(b: bytes) -> bool:
     # quick sniff for JPG/PNG
     return bool(b) and len(b) > 8 and (b[:2] == b"\xFF\xD8" or b[:8] == b"\x89PNG\r\n\x1a\n")
@@ -251,22 +270,31 @@ with tab2:
 with tab3:
     df = st.session_state["df"]
 
+    # --- Custom Runs Entry Form (does NOT create defect record) ---
+    with st.expander("📦 Log Today's Custom Runs (does NOT create defect record)"):
+        cr_date = st.date_input("Date", value=date.today(), key="customrun_date")
+        cr_runs = st.number_input("Custom Runs (today)", min_value=0, value=0, key="customrun_val")
+        if st.button("Save Custom Runs"):
+            log_custom_runs(cr_date, cr_runs)
+            st.success(f"Logged {cr_runs} runs for {cr_date}")
+
     # ---- 📅 Monthly Custom Run & Damage Stats ----
-    from datetime import datetime
     now = datetime.now()
-    if not df.empty and 'Custom_Runs' in df.columns:
+    total_custom_runs = get_monthly_custom_runs(now.year, now.month)
+    total_damages = 0
+    damage_percent = 0
+
+    if not df.empty:
         month_df = df[(df['Date'].dt.year == now.year) & (df['Date'].dt.month == now.month)]
-        total_custom_runs = month_df['Custom_Runs'].sum()
         total_damages = month_df['Quantity'].sum()
         damage_percent = (total_damages / total_custom_runs) * 100 if total_custom_runs > 0 else 0
-    else:
-        total_custom_runs = total_damages = damage_percent = 0
 
     st.markdown("#### 📅 This Month's Custom Run & Damage Stats")
     c1, c2, c3 = st.columns(3)
     c1.metric("Custom Runs", total_custom_runs)
     c2.metric("Damaged Pieces", total_damages)
     c3.metric("Damage %", f"{damage_percent:.2f}%")
+
     
     
     m1, m2, m3 = st.columns(3)
