@@ -281,10 +281,10 @@ with tab3:
     # ---- 📅 Monthly Custom Run & Damage Stats ----
     now = datetime.now()
     total_custom_runs = get_monthly_custom_runs(now.year, now.month)
-try:
-    total_custom_runs = int(total_custom_runs)
-except (TypeError, ValueError):
-    total_custom_runs = 0
+    try:
+        total_custom_runs = int(total_custom_runs)
+    except (TypeError, ValueError):
+        total_custom_runs = 0
 
     total_damages = 0
     damage_percent = 0
@@ -301,7 +301,6 @@ except (TypeError, ValueError):
     c3.metric("Damage %", f"{damage_percent:.2f}%")
 
     st.markdown("#### 📊 Overall Stats")
-        
     m1, m2, m3 = st.columns(3)
     m1.metric("Total Records", len(df))
     m2.metric("Total Scratches", int(df["Quantity"].sum()) if not df.empty else 0)
@@ -319,50 +318,44 @@ except (TypeError, ValueError):
     with st.expander("🔒 Admin: Delete rows by Tag#"):
         tags_in = st.text_input("Tag#s to delete (comma-separated)")
         delete_btn = st.button("🚨 Delete Selected", key="delete_btn")
-    
-    if delete_btn:
-        tags = [t.strip() for t in tags_in.split(",") if t.strip()]
-        if not tags:
-            st.warning("No tags entered.")
-        else:
-            try:
-                # Double-check tags exist
-                present_tags = df["Tag"].astype(str).tolist()
-                delete_these = [t for t in tags if t in present_tags]
-                if not delete_these:
-                    st.warning("None of those Tag#s are present in the data.")
-                else:
-                    ph = ",".join(["%s"] * len(delete_these))
-                    cursor = get_conn().cursor()
-                    cursor.execute(f"DELETE FROM defects WHERE Tag IN ({ph})", delete_these)
-                    get_conn().commit()
-                    cursor.close()
-
-                    # Refresh data
-                    load_data_cached.clear()
-                    st.session_state["df"] = load_data_cached()
-                    st.success(f"Deleted: {', '.join(delete_these)}")
-                    st.rerun()
-            except Exception as e:
-                st.error(f"Delete failed: {e}")
-
+        if delete_btn:
+            tags = [t.strip() for t in tags_in.split(",") if t.strip()]
+            if not tags:
+                st.warning("No tags entered.")
+            else:
+                try:
+                    present_tags = df["Tag"].astype(str).tolist()
+                    delete_these = [t for t in tags if t in present_tags]
+                    if not delete_these:
+                        st.warning("None of those Tag#s are present in the data.")
+                    else:
+                        ph = ",".join(["%s"] * len(delete_these))
+                        cursor = get_conn().cursor()
+                        cursor.execute(f"DELETE FROM defects WHERE Tag IN ({ph})", delete_these)
+                        get_conn().commit()
+                        cursor.close()
+                        load_data_cached.clear()
+                        st.session_state["df"] = load_data_cached()
+                        st.success(f"Deleted: {', '.join(delete_these)}")
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"Delete failed: {e}")
 
     if df.empty:
         st.info("No data available.")
     else:
         all_df = (
-    df.sort_values("Date", ascending=False)
-      .loc[:, ["Size", "Tag", "Date", "Quantity", "Scratch_Type", "Glass_Type", "Rack_Type"]]
-      .rename(columns={
-          "Size": "Size",
-          "Tag": "Tag#",
-          "Quantity": "QTY",
-          "Scratch_Type": "Type",
-          "Glass_Type": "Glass",
-          "Rack_Type": "Rack"
-      })
+            df.sort_values("Date", ascending=False)
+              .loc[:, ["Size", "Tag", "Date", "Quantity", "Scratch_Type", "Glass_Type", "Rack_Type"]]
+              .rename(columns={
+                  "Size": "Size",
+                  "Tag": "Tag#",
+                  "Quantity": "QTY",
+                  "Scratch_Type": "Type",
+                  "Glass_Type": "Glass",
+                  "Rack_Type": "Rack"
+              })
         )
-    
         all_df["Date"] = pd.to_datetime(all_df["Date"], errors="coerce").dt.strftime("%Y-%m-%d").fillna("N/A")
         all_df = all_df.reset_index(drop=True)
         all_df.index = all_df.index + 1
@@ -370,7 +363,7 @@ except (TypeError, ValueError):
 
         st.dataframe(all_df, use_container_width=True, height=350)
 
-               # --- Only show Tag#s with images in the dropdown ---
+        # --- Only show Tag#s with images in the dropdown ---
         tags_with_images = df[
             df['ImageData'].notnull() & 
             df['ImageData'].apply(lambda x: isinstance(x, (bytes, bytearray)) and len(x) > 0)
@@ -380,7 +373,6 @@ except (TypeError, ValueError):
             sel = st.selectbox("Select Tag# (with image)", tags_with_images)
             row = df[df["Tag"] == sel].iloc[0]
             img_bytes = row.get("ImageData")
-
             if isinstance(img_bytes, (bytes, bytearray)) and looks_like_image(img_bytes):
                 st.image(img_bytes, width=100, caption="📷 Preview")
                 date_val = pd.to_datetime(row["Date"], errors="coerce")
@@ -396,7 +388,6 @@ except (TypeError, ValueError):
         else:
             st.info("No tags with images found.")
 
-
         # Excel export
         export_df = df.copy()
         export_df["Date"] = pd.to_datetime(export_df["Date"], errors="coerce").dt.strftime("%Y-%m-%d")
@@ -411,3 +402,4 @@ except (TypeError, ValueError):
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True
         )
+
