@@ -181,6 +181,7 @@ with tab2:
             tag = st.text_input("Tag#", key=form_keys["tag"])
             qty = st.number_input("Quantity", min_value=1, value=1, key=form_keys["qty"])
             date_val = st.date_input("Date", value=date.today(), key=form_keys["dval"])
+            custom_runs = st.number_input("Custom Runs (today)", min_value=0, value=0)
 
         with c2:
             loc = st.selectbox(
@@ -232,10 +233,10 @@ with tab2:
             cur.execute("""
                 INSERT INTO defects
                 (PO, Tag, Size, Quantity, Scratch_Location, Scratch_Type,
-                 Glass_Type, Rack_Type, Vendor, Date, Note, ImageData)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                 Glass_Type, Rack_Type, Vendor, Date, Note, ImageData, Custom_Runs)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """, (po_clean, tag.strip(), size.strip(), qty, loc, stype,
-                  gtype, rtype, vendor, chosen_date, note.strip(), img_bytes))
+                  gtype, rtype, vendor, chosen_date, note.strip(), img_bytes, custom_runs))
             conn.commit()
             cur.close()
 
@@ -250,6 +251,24 @@ with tab2:
 with tab3:
     df = st.session_state["df"]
 
+    # ---- 📅 Monthly Custom Run & Damage Stats ----
+    from datetime import datetime
+    now = datetime.now()
+    if not df.empty and 'Custom_Runs' in df.columns:
+        month_df = df[(df['Date'].dt.year == now.year) & (df['Date'].dt.month == now.month)]
+        total_custom_runs = month_df['Custom_Runs'].sum()
+        total_damages = month_df['Quantity'].sum()
+        damage_percent = (total_damages / total_custom_runs) * 100 if total_custom_runs > 0 else 0
+    else:
+        total_custom_runs = total_damages = damage_percent = 0
+
+    st.markdown("#### 📅 This Month's Custom Run & Damage Stats")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Custom Runs", total_custom_runs)
+    c2.metric("Damaged Pieces", total_damages)
+    c3.metric("Damage %", f"{damage_percent:.2f}%")
+    
+    
     m1, m2, m3 = st.columns(3)
     m1.metric("Total Records", len(df))
     m2.metric("Total Scratches", int(df["Quantity"].sum()) if not df.empty else 0)
@@ -318,22 +337,32 @@ with tab3:
 
         st.dataframe(all_df, use_container_width=True, height=350)
 
-        sel = st.selectbox("Select Tag# to download its image", all_df["Tag#"])
-        row = df[df["Tag"] == sel].iloc[0]
-        img_bytes = row.get("ImageData")
+               # --- Only show Tag#s with images in the dropdown ---
+        tags_with_images = df[
+            df['ImageData'].notnull() & 
+            df['ImageData'].apply(lambda x: isinstance(x, (bytes, bytearray)) and len(x) > 0)
+        ]['Tag'].unique().tolist()
 
-        if isinstance(img_bytes, (bytes, bytearray)) and looks_like_image(img_bytes):
-            st.image(img_bytes, width=100, caption="📷 Preview")
-            date_val = pd.to_datetime(row["Date"], errors="coerce")
-            date_str = date_val.strftime("%Y-%m-%d") if not pd.isna(date_val) else "unknown"
-            st.download_button(
-                "⬇️ Download Image",
-                data=img_bytes,
-                file_name=f"{sel}_{date_str}.jpg",
-                mime="image/jpeg"
-            )
+        if tags_with_images:
+            sel = st.selectbox("Select Tag# (with image)", tags_with_images)
+            row = df[df["Tag"] == sel].iloc[0]
+            img_bytes = row.get("ImageData")
+
+            if isinstance(img_bytes, (bytes, bytearray)) and looks_like_image(img_bytes):
+                st.image(img_bytes, width=100, caption="📷 Preview")
+                date_val = pd.to_datetime(row["Date"], errors="coerce")
+                date_str = date_val.strftime("%Y-%m-%d") if not pd.isna(date_val) else "unknown"
+                st.download_button(
+                    "⬇️ Download Image",
+                    data=img_bytes,
+                    file_name=f"{sel}_{date_str}.jpg",
+                    mime="image/jpeg"
+                )
+            else:
+                st.info("No valid image for this record.")
         else:
-            st.info("No valid image for this record.")
+            st.info("No tags with images found.")
+
 
         # Excel export
         export_df = df.copy()
