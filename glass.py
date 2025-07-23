@@ -281,7 +281,10 @@ with tab3:
     # ---- 📅 Monthly Custom Run & Damage Stats ----
     now = datetime.now()
     total_custom_runs = get_monthly_custom_runs(now.year, now.month)
-    total_custom_runs = total_custom_runs or 0  # always a number
+try:
+    total_custom_runs = int(total_custom_runs)
+except (TypeError, ValueError):
+    total_custom_runs = 0
 
     total_damages = 0
     damage_percent = 0
