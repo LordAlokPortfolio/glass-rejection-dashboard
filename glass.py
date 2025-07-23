@@ -281,6 +281,8 @@ with tab3:
     # ---- 📅 Monthly Custom Run & Damage Stats ----
     now = datetime.now()
     total_custom_runs = get_monthly_custom_runs(now.year, now.month)
+    total_custom_runs = total_custom_runs or 0  # always a number
+
     total_damages = 0
     damage_percent = 0
 
@@ -295,8 +297,8 @@ with tab3:
     c2.metric("Damaged Pieces", total_damages)
     c3.metric("Damage %", f"{damage_percent:.2f}%")
 
-    
-    
+    st.markdown("#### 📊 Overall Stats")
+        
     m1, m2, m3 = st.columns(3)
     m1.metric("Total Records", len(df))
     m2.metric("Total Scratches", int(df["Quantity"].sum()) if not df.empty else 0)
