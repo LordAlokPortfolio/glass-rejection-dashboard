@@ -253,7 +253,7 @@ with tab2:
                 INSERT INTO defects
                 (PO, Tag, Size, Quantity, Scratch_Location, Scratch_Type,
                  Glass_Type, Rack_Type, Vendor, Date, Note, ImageData)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """, (po_clean, tag.strip(), size.strip(), qty, loc, stype,
                   gtype, rtype, vendor, chosen_date, note.strip(), img_bytes))
             conn.commit()
