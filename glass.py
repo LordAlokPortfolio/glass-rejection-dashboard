@@ -192,7 +192,7 @@ with tab2:
         "vendor": "vendor", "note": "note"
     }
 
-    with st.form("scratch_form", clear_on_submit=False):
+    with st.form("scratch_form", clear_on_submit=True):
         c1, c2 = st.columns(2)
         with c1:
             size = st.text_input("Glass Size", key=form_keys["size"])
