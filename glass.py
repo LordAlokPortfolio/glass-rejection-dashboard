@@ -226,7 +226,7 @@ with tab2:
             vendor = st.selectbox("Vendor", ["Cardinal CG","Woodbridge","Universal","Trimlite"], key=form_keys["vendor"])
             note = st.text_area("Notes / Extra details (optional)", key=form_keys["note"])
 
-        up_img = st.file_uploader("Upload Image (Max 2MB)", type=["jpg","jpeg","png"], key=form_keys["img"])
+        up_img = st.file_uploader("Upload Image (Max 4MB)", type=["jpg","jpeg","png"], key=form_keys["img"])
         if up_img:
             st.image(up_img, caption="🖼️ Preview", width=200)
 
@@ -242,8 +242,8 @@ with tab2:
             img_bytes = None
             if up_img:
                 up_img.seek(0, os.SEEK_END)
-                if up_img.tell() > 2 * 1024 * 1024:
-                    st.error("Image exceeds 2 MB.")
+                if up_img.tell() > 4 * 1024 * 1024:
+                    st.error("Image exceeds 4 MB.")
                     st.stop()
                 up_img.seek(0)
                 img_bytes = up_img.read()
