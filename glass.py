@@ -22,16 +22,6 @@ def log_custom_runs(date_val, runs_val):
     conn.commit()
     cur.close()
 
-def get_monthly_custom_runs(year, month):
-    cur, _ = get_cursor()
-    cur.execute(
-        "SELECT SUM(runs) as total_runs FROM custom_runs WHERE YEAR(run_date) = %s AND MONTH(run_date) = %s",
-        (year, month)
-    )
-    res = cur.fetchone()
-    cur.close()
-    return res['total_runs'] if res and res['total_runs'] else 0
-
 def looks_like_image(b: bytes) -> bool:
     # quick sniff for JPG/PNG
     return bool(b) and len(b) > 8 and (b[:2] == b"\xFF\xD8" or b[:8] == b"\x89PNG\r\n\x1a\n")
@@ -278,23 +268,29 @@ with tab3:
             log_custom_runs(cr_date, cr_runs)
             st.success(f"Logged {cr_runs} runs for {cr_date}")
 
-    # ---- 📅 Monthly Custom Run & Damage Stats ----
-    now = datetime.now()
-    total_custom_runs = get_monthly_custom_runs(now.year, now.month)
+    # ---- 📅 Cumulative Custom Run & Damage Stats ----
+
+    def get_cumulative_custom_runs():
+        cur, _ = get_cursor()
+        # Get sum of all runs up to and including Dec 31, 2025
+        cur.execute(
+            "SELECT SUM(runs) as total_runs FROM custom_runs WHERE run_date <= %s",
+            ('2025-12-31',)
+        )
+        res = cur.fetchone()
+        cur.close()
+        return res['total_runs'] if res and res['total_runs'] else 0
+
+    total_custom_runs = get_cumulative_custom_runs()
     try:
         total_custom_runs = int(total_custom_runs)
     except (TypeError, ValueError):
         total_custom_runs = 0
 
-    total_damages = 0
-    damage_percent = 0
+    total_damages = df['Quantity'].sum() if not df.empty else 0
+    damage_percent = (total_damages / total_custom_runs) * 100 if total_custom_runs > 0 else 0
 
-    if not df.empty:
-        month_df = df[(df['Date'].dt.year == now.year) & (df['Date'].dt.month == now.month)]
-        total_damages = month_df['Quantity'].sum()
-        damage_percent = (total_damages / total_custom_runs) * 100 if total_custom_runs > 0 else 0
-
-    st.markdown("#### 📅 This Month's Custom Run & Damage Stats")
+    st.markdown("#### 📅 Cumulative Custom Runs & Damage Stats (till Dec 31, 2025)")
     c1, c2, c3 = st.columns(3)
     c1.metric("Custom Runs", total_custom_runs)
     c2.metric("Damaged Pieces", total_damages)
@@ -402,4 +398,3 @@ with tab3:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True
         )
-
