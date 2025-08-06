@@ -110,6 +110,12 @@ st.markdown("<div style='text-align:center'>", unsafe_allow_html=True)
 st.image("KV-Logo-1.png", width=150)
 st.markdown("</div>", unsafe_allow_html=True)
 
+if not df.empty and "Glass_Type" in df.columns:
+    # Normalize all i89 variants to just "i89"
+    df["Glass_Type"] = df["Glass_Type"].replace(
+        {"i89/IS20/SUNGUARD": "i89", "IS20": "i89", "SUNGUARD": "i89"}
+    )
+
 # ---------- Tabs ----------
 tab1, tab2, tab3 = st.tabs(["📊 Dashboard", "📝 Data Entry", "📄 Data Table"])
 
@@ -207,7 +213,7 @@ with tab2:
             )
             gtype = st.selectbox(
                 "Glass Type (Coating)",
-                ["CLEAR","LOWE 272","LOWE 180","LOWE 366","i89/IS20/SUNGUARD",
+                ["CLEAR","LOWE 272","LOWE 180","LOWE 366","i89",
                  "MATT","6331","GRAY","HAMMERED","LOWE SHAPE","NIAGARA/RAIN",
                  "PINHEAD","1/2 REED","ACID ETCH"],
                 key=form_keys["gtype"]
