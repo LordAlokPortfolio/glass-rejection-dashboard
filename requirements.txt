@@ -1,7 +1,7 @@
-streamlit
-mysql-connector-python
-pandas
-plotly
-streamlit-autorefresh
-pillow>=10
-openpyxl
+streamlit==1.31.0
+mysql-connector-python==8.2.0
+pandas==2.2.2
+plotly==5.21.0
+streamlit-autorefresh==0.0.3
+pillow==10.2.0
+openpyxl==3.1.2
