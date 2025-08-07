@@ -6,11 +6,11 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 from PIL import Image
-from streamlit_autorefresh import st_autorefresh
+#from streamlit_autorefresh import st_autorefresh
 
 # ---------- Streamlit basic setup ----------
 st.set_page_config(page_title="Glass Guard", layout="wide")
-st_autorefresh(interval=300_000, key="auto_refresh")   # 5‑min auto refresh
+#st_autorefresh(interval=300_000, key="auto_refresh")   # 5‑min auto refresh
 
 # ---------- Helpers ----------
 def log_custom_runs(date_val, runs_val):
