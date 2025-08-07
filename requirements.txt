@@ -4,4 +4,3 @@ pandas
 plotly
 openpyxl
 pillow
-streamlit-autorefresh
