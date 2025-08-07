@@ -315,8 +315,9 @@ with tab3:
 
     st.markdown("#### 📊 Overall Stats")
     m1, m2, m3 = st.columns(3)
-    m1.metric("Total Records", len(df))
-    m2.metric("Total Damages", int(df["Quantity"].sum()) if not df.empty else 0)
+    m1.metric("Total Records", len(df_filtered))
+    m2.metric("Total Damages", int(df_filtered["Quantity"].sum()) if not df_filtered.empty else 0)
+
 
     glass_sums = df.groupby("Glass_Type")["Quantity"].sum() if not df.empty else pd.Series(dtype=int)
     if not glass_sums.empty:
