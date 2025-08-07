@@ -125,7 +125,16 @@ with tab1:
         df["Week#"] = df["Date"].dt.isocalendar().week
 
         sel_year = st.radio("Choose Year", sorted(df["Year"].unique()), horizontal=True)
-        dfy = df[df["Year"] == sel_year]
+
+        with st.expander("⚙️ Advanced Options", expanded=False):
+            show_all_vendors = st.checkbox("Show All Vendors", value=False)
+
+        # Filter by vendor and year
+        df_filtered = df.copy()
+        if not show_all_vendors:
+            df_filtered = df_filtered[df_filtered["Vendor"] == "Cardinal CG"]
+
+        dfy = df_filtered[df_filtered["Year"] == sel_year]
 
         st.markdown("### 🧾 FACTS – Core Defect Types Overview")
         facts_only = ["Scratched", "Production Issue", "Stain Mark", "Broken", "Missing"]
@@ -159,17 +168,19 @@ with tab1:
         weekly = dfy.groupby("Week#")["Quantity"].sum().reset_index()
         st.plotly_chart(px.line(weekly, x="Week#", y="Quantity", markers=True), use_container_width=True)
 
-        st.markdown("### 🧊 Glass Type Distribution") 
-        dist = dfy.groupby("Glass_Type")["Quantity"].sum().reset_index()
-        st.plotly_chart(px.bar(dist, x="Glass_Type", y="Quantity", color="Glass_Type"), use_container_width=True)
+        # REMOVED vendor distribution chart (as per your boss)
+        # REPLACED with Cardinal CG vs Production Issue
+        st.markdown("### 🏭 Cardinal CG vs Production Issue")
+        cf_df = dfy.copy()
+        cf_df["Origin"] = cf_df["Scratch_Type"].apply(
+            lambda x: "Production Issue" if x == "Production Issue" else "Cardinal CG"
+        )
+        summary = cf_df.groupby("Origin")["Quantity"].sum().reset_index()
+        st.plotly_chart(px.pie(summary, names="Origin", values="Quantity", hole=0.4), use_container_width=True)
 
         st.markdown("### 🧺 Rack Type Breakdown")
         rack = dfy.groupby("Rack_Type")["Quantity"].sum().reset_index()
         st.plotly_chart(px.pie(rack, names="Rack_Type", values="Quantity", hole=0.4), use_container_width=True)
-
-        st.markdown("### 🏭 Vendor Distribution")
-        vendor = dfy.groupby("Vendor")["Quantity"].sum().reset_index()
-        st.plotly_chart(px.pie(vendor, names="Vendor", values="Quantity", hole=0.4), use_container_width=True)
 
 # ===== TAB 2: Data Entry =====
 with tab2:
@@ -299,7 +310,7 @@ with tab3:
     st.markdown("#### 📊 Overall Stats")
     m1, m2, m3 = st.columns(3)
     m1.metric("Total Records", len(df))
-    m2.metric("Total Scratches", int(df["Quantity"].sum()) if not df.empty else 0)
+    m2.metric("Total Damages", int(df["Quantity"].sum()) if not df.empty else 0)
 
     glass_sums = df.groupby("Glass_Type")["Quantity"].sum() if not df.empty else pd.Series(dtype=int)
     if not glass_sums.empty:
